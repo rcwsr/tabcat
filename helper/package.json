@@ -1,0 +1,17 @@
+{
+  "name": "taby-helper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local Laya decision server for the Taby Firefox extension",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@receptron/laya": "^0.1.2"
+  }
+}
