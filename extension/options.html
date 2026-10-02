@@ -9,6 +9,9 @@
       label { display: block; margin: 8px 0 4px; }
       input[type="text"], input[type="url"], select { font: inherit; padding: 4px 6px; width: 100%; box-sizing: border-box; }
       .hint { color: #666; font-size: 12px; margin: 4px 0 0; }
+      .choice { display: block; margin: 6px 0; }
+      .choice input { margin-right: 6px; }
+      fieldset[hidden] { display: none; }
       .category { display: grid; grid-template-columns: 140px 1fr auto; gap: 8px; margin-bottom: 8px; }
       .category textarea { font: inherit; padding: 4px 6px; resize: vertical; min-height: 2.2em; }
       .actions { display: flex; gap: 8px; align-items: center; }
@@ -21,6 +24,20 @@
     <h1>Tav settings</h1>
     <form id="settings">
       <fieldset>
+        <legend>How to group</legend>
+        <label class="choice"><input type="radio" name="mode" value="auto" />Automatically: find groups of related tabs and name them</label>
+        <label class="choice"><input type="radio" name="mode" value="categories" />Into my categories (below)</label>
+      </fieldset>
+
+      <fieldset id="autoSettings">
+        <legend>Automatic grouping</legend>
+        <p class="hint">Tav runs two small AI models on this computer: one to find related tabs, one to suggest names. The first run downloads them (about 80 MB) from Hugging Face; after that they're cached. Tab titles never leave this computer.</p>
+        <label for="groupingThreshold">Grouping strictness: <output id="groupingThresholdValue"></output></label>
+        <input id="groupingThreshold" type="range" min="0.15" max="0.4" step="0.01" />
+        <p class="hint">Higher keeps groups tighter and leaves more tabs alone. Lower groups more loosely.</p>
+      </fieldset>
+
+      <fieldset id="modelSettings">
         <legend>Decision model</legend>
         <label for="provider">Provider</label>
         <select id="provider">
@@ -32,15 +49,11 @@
         <p class="hint">Where <a href="https://github.com/rcwsr/layad">layad</a> is listening (check with <code>layad status</code>). Only 127.0.0.1 addresses are allowed.</p>
       </fieldset>
 
-      <fieldset>
-        <legend>Confidence</legend>
+      <fieldset id="categorySettings">
+        <legend>Categories</legend>
         <label for="minConfidence">Minimum confidence: <output id="minConfidenceValue"></output></label>
         <input id="minConfidence" type="range" min="0" max="1" step="0.05" />
         <p class="hint">Tabs the model is less sure about than this are left where they are.</p>
-      </fieldset>
-
-      <fieldset>
-        <legend>Categories</legend>
         <p class="hint">The name becomes the group title. The model reads the description to decide what belongs, so describe the contents rather than just naming them.</p>
         <div id="categories"></div>
         <button type="button" id="addCategory">Add category</button>

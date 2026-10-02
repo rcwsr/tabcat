@@ -8,6 +8,12 @@ const minConfidenceValue = document.getElementById("minConfidenceValue");
 const categoryList = document.getElementById("categories");
 const rowTemplate = document.getElementById("categoryRow");
 const status = document.getElementById("status");
+const modeInputs = document.querySelectorAll('input[name="mode"]');
+const autoSettings = document.getElementById("autoSettings");
+const categorySettings = document.getElementById("categorySettings");
+const modelSettings = document.getElementById("modelSettings");
+const groupingThreshold = document.getElementById("groupingThreshold");
+const groupingThresholdValue = document.getElementById("groupingThresholdValue");
 
 function show(text, isError = false) {
   status.textContent = text;
@@ -23,7 +29,24 @@ function addCategoryRow(key = "", criteria = "") {
   return row;
 }
 
+function selectedMode() {
+  return document.querySelector('input[name="mode"]:checked')?.value ?? "auto";
+}
+
+// Only the chosen mode's section is shown. Disabling the other one also stops its
+// required fields from blocking Save.
+function showMode(mode) {
+  autoSettings.hidden = autoSettings.disabled = mode !== "auto";
+  categorySettings.hidden = categorySettings.disabled = mode !== "categories";
+  // Only categories mode uses the decision model.
+  modelSettings.hidden = modelSettings.disabled = mode !== "categories";
+}
+
 function render(settings) {
+  for (const input of modeInputs) input.checked = input.value === settings.mode;
+  showMode(settings.mode);
+  groupingThreshold.value = settings.groupingThreshold;
+  groupingThresholdValue.textContent = Number(settings.groupingThreshold).toFixed(2);
   // A disabled option can't stay selected, so fall back to Laya.
   provider.value = provider.querySelector(`option[value="${settings.provider}"]:not([disabled])`)
     ? settings.provider
@@ -63,12 +86,20 @@ function collect() {
   if (Object.keys(categories).length < 2) throw new Error("Add at least two categories.");
 
   return {
+    mode: selectedMode(),
+    groupingThreshold: Number(groupingThreshold.value),
     provider: provider.value,
     layaUrl: url.origin,
     minConfidence: Number(minConfidence.value),
     categories,
   };
 }
+
+for (const input of modeInputs) input.addEventListener("change", () => showMode(selectedMode()));
+
+groupingThreshold.addEventListener("input", () => {
+  groupingThresholdValue.textContent = Number(groupingThreshold.value).toFixed(2);
+});
 
 minConfidence.addEventListener("input", () => {
   minConfidenceValue.textContent = Number(minConfidence.value).toFixed(2);
