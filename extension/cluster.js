@@ -78,9 +78,8 @@ export function topicPrompt(titles, keywords) {
 
 const capitalise = (w) => w.charAt(0).toUpperCase() + w.slice(1);
 
-// Possible names for a group, best guess first: the topic model's suggestion, then shared
-// title words, then the site if every tab is on the same one. At most 8, because Laya's
-// choice answers are uncalibrated past 10 options.
+// Possible names for a group, best first: the topic model's suggestion, then shared title
+// words, then the site if every tab is on the same one. At most 8.
 export function nameCandidates(topic, keywords, hosts) {
   const names = [];
   // The topic model sometimes stutters ("Tax Tax").

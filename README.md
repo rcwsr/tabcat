@@ -4,9 +4,9 @@ A Firefox extension that sorts your tabs into groups, on your own computer.
 
 By default it finds the groups itself: small AI models running inside the extension
 ([transformers.js](https://github.com/huggingface/transformers.js)) spot related tabs and
-suggest names, and [Laya](https://github.com/receptron/laya) (via layad) picks the best
-name. Or you can define your own categories and let Laya sort each tab into one. Either way
-tab data never leaves your machine. The provider is swappable for TypeSafe Jev later.
+name them. Nothing else to install. Or you can define your own categories and let
+[Laya](https://github.com/receptron/laya) (via layad) sort each tab into one. Either way tab
+data never leaves your machine. The categories provider is swappable for TypeSafe Jev later.
 
 ## How automatic grouping works
 
@@ -17,8 +17,7 @@ tab data never leaves your machine. The provider is swappable for TypeSafe Jev l
    become new groups; lone tabs are left alone.
 4. Each new group gets a name from
    [smart-tab-topic](https://huggingface.co/Mozilla/smart-tab-topic) (the model Firefox's
-   own tab grouping uses), shared title words, or the site. Laya picks among them. Without
-   layad, the topic model's name is used.
+   own tab grouping uses), falling back to shared title words or the site.
 
 The models (about 80 MB) download from Hugging Face the first time you organise and are
 cached after that. Firefox's built-in `browser.trial.ml` isn't used because it needs
@@ -45,8 +44,7 @@ models themselves download on first use.
 
 1. Install the `.xpi` in Firefox 142+. Release Firefox only installs signed add-ons, so
    this needs a build signed by addons.mozilla.org.
-2. Optional: install and start [layad](https://github.com/rcwsr/layad) so Laya picks group
-   names (it's required for categories mode):
+2. Only for categories mode: install and start [layad](https://github.com/rcwsr/layad):
 
    ```sh
    brew tap rcwsr/tap && brew install layad && brew services start layad
