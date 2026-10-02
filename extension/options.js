@@ -11,6 +11,7 @@ const status = document.getElementById("status");
 const modeInputs = document.querySelectorAll('input[name="mode"]');
 const autoSettings = document.getElementById("autoSettings");
 const categorySettings = document.getElementById("categorySettings");
+const modelSettings = document.getElementById("modelSettings");
 const groupingThreshold = document.getElementById("groupingThreshold");
 const groupingThresholdValue = document.getElementById("groupingThresholdValue");
 
@@ -37,6 +38,8 @@ function selectedMode() {
 function showMode(mode) {
   autoSettings.hidden = autoSettings.disabled = mode !== "auto";
   categorySettings.hidden = categorySettings.disabled = mode !== "categories";
+  // Only categories mode uses the decision model.
+  modelSettings.hidden = modelSettings.disabled = mode !== "categories";
 }
 
 function render(settings) {

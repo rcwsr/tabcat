@@ -86,26 +86,6 @@ async function organiseByCategory(windowId, tabs, settings) {
 }
 
 // Laya picks the best of the candidate names; without layad, the first candidate wins.
-async function chooseName(candidates, titles, provider) {
-  if (candidates.length < 2) return candidates[0];
-  try {
-    const result = await provider.decide(
-      { tabs: titles },
-      {
-        name: {
-          type: "choice",
-          instructions: "Which name best describes what this group of browser tabs has in common?",
-          criteria: Object.fromEntries(candidates.map((c) => [c, c])),
-        },
-      },
-    );
-    return result.answers.name.choice;
-  } catch (err) {
-    console.warn("Tav: naming with Laya failed, using the topic model's name.", err);
-    return candidates[0];
-  }
-}
-
 // Tells the popup, if it's open, what's taking so long.
 function progress(text) {
   browser.runtime.sendMessage({ type: "progress", text }).catch(() => {});
@@ -142,14 +122,13 @@ async function organiseAutomatically(windowId, tabs, settings) {
   }));
 
   const clusters = averageLinkage(vectors, loose, threshold).filter((c) => c.length >= 2);
-  const provider = createProvider(settings);
   const taken = new Set(existing.map((g) => g.title));
   for (const ix of clusters) {
     const titles = ix.map((i) => tabs[i].title ?? "");
     const keywords = sharedKeywords(titles);
     const suggestion = await topic(topicPrompt(titles, keywords), progress);
     const hosts = ix.map((i) => new URL(tabs[i].url).hostname);
-    let title = (await chooseName(nameCandidates(suggestion, keywords, hosts), titles, provider)) ?? "Tabs";
+    let title = nameCandidates(suggestion, keywords, hosts)[0] ?? "Tabs";
     // Don't fold an unrelated cluster into an existing group just because the names match.
     const base = title;
     for (let n = 2; taken.has(title); n++) title = `${base} ${n}`;
