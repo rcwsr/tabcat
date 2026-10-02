@@ -7,7 +7,8 @@
   "scripts": {
     "postinstall": "node scripts/vendor.mjs",
     "lint": "npx --yes web-ext lint -s extension",
-    "start": "npx --yes web-ext run -s extension"
+    "start": "npx --yes web-ext run -s extension",
+    "build": "node scripts/vendor.mjs && npx --yes web-ext build -s extension --overwrite-dest"
   },
   "devDependencies": {
     "@huggingface/transformers": "4.3.0"

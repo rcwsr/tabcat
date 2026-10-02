@@ -33,30 +33,39 @@ extension/   Firefox MV3 extension
   ml.js           on-device models via transformers.js
   providers.js    LayaProvider (local layad) / JevProvider (stub)
   categories.js   default categories and settings
-  vendor/         transformers.js + ONNX runtime, copied in by `npm install` (not committed)
+  vendor/         transformers.js + ONNX runtime, copied in by `npm install` (not committed;
+                  included in the built package)
 scripts/vendor.mjs
 ```
 
-## Running
+## Installing
 
-1. Run `npm install`. This copies transformers.js and the ONNX WebAssembly runtime into
-   `extension/vendor/`; the extension won't load without them.
+Tav ships as a single `.xpi` with everything it needs, including the model runtime. The
+models themselves download on first use.
 
-2. Install and start [layad](https://github.com/rcwsr/layad), which keeps the Laya model
-   resident and serves it on `http://127.0.0.1:8918`:
+1. Install the `.xpi` in Firefox 142+. Release Firefox only installs signed add-ons, so
+   this needs a build signed by addons.mozilla.org.
+2. Optional: install and start [layad](https://github.com/rcwsr/layad) so Laya picks group
+   names (it's required for categories mode):
 
    ```sh
    brew tap rcwsr/tap && brew install layad && brew services start layad
    layad status
    ```
 
-   Optional in automatic mode (it only picks names), required for categories.
+3. Click the Tav toolbar button → **Organise this window**.
 
-3. Load the extension in Firefox 142+:
-   `about:debugging` → This Firefox → Load Temporary Add-on → pick `extension/manifest.json`.
-   Or run `npm start`.
+## Development
 
-4. Click the Tav toolbar button → **Organise this window**.
+```sh
+npm install      # also copies transformers.js + the ONNX wasm runtime into extension/vendor/
+npm start        # runs Firefox with the extension loaded
+npm run lint
+npm run build    # self-contained package in web-ext-artifacts/
+```
+
+Or load it by hand: `about:debugging` → This Firefox → Load Temporary Add-on →
+`extension/manifest.json` (after `npm install`).
 
 ## Settings
 
