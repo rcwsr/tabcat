@@ -1,0 +1,15 @@
+{
+  "name": "tav",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Firefox extension that sorts open tabs into tab groups",
+  "type": "module",
+  "scripts": {
+    "postinstall": "node scripts/vendor.mjs",
+    "lint": "npx --yes web-ext lint -s extension",
+    "start": "npx --yes web-ext run -s extension"
+  },
+  "devDependencies": {
+    "@huggingface/transformers": "4.3.0"
+  }
+}
