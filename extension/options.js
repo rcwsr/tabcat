@@ -41,11 +41,11 @@ function collect() {
   try {
     url = new URL(layaUrl.value.trim());
   } catch {
-    throw new Error("Helper URL isn't a valid URL.");
+    throw new Error("layad URL isn't a valid URL.");
   }
   // host_permissions only cover 127.0.0.1, and tab data must stay on this machine.
   if (url.protocol !== "http:" || url.hostname !== "127.0.0.1") {
-    throw new Error("Helper URL must be http://127.0.0.1:<port>.");
+    throw new Error("layad URL must be http://127.0.0.1:<port>.");
   }
 
   const categories = {};

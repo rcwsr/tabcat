@@ -24,12 +24,12 @@
         <legend>Decision model</legend>
         <label for="provider">Provider</label>
         <select id="provider">
-          <option value="laya">Laya (local helper)</option>
+          <option value="laya">Laya via layad (local)</option>
           <option value="jev" disabled>TypeSafe Jev (not available yet)</option>
         </select>
-        <label for="layaUrl">Helper URL</label>
+        <label for="layaUrl">layad URL</label>
         <input id="layaUrl" type="url" required />
-        <p class="hint">Run <code>npm start</code> in <code>helper/</code>. Only 127.0.0.1 addresses are allowed.</p>
+        <p class="hint">Where <a href="https://github.com/rcwsr/layad">layad</a> is listening (check with <code>layad status</code>). Only 127.0.0.1 addresses are allowed.</p>
       </fieldset>
 
       <fieldset>
