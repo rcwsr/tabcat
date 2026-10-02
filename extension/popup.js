@@ -21,3 +21,9 @@ button.addEventListener("click", async () => {
     button.disabled = false;
   }
 });
+
+document.getElementById("settings").addEventListener("click", (event) => {
+  event.preventDefault();
+  browser.runtime.openOptionsPage();
+  window.close();
+});

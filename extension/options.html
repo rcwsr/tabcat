@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Taby settings</title>
+    <style>
+      body { font: 14px system-ui, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
+      fieldset { border: 1px solid #ccc; border-radius: 6px; margin-bottom: 16px; padding: 12px 16px; }
+      label { display: block; margin: 8px 0 4px; }
+      input[type="text"], input[type="url"], select { font: inherit; padding: 4px 6px; width: 100%; box-sizing: border-box; }
+      .hint { color: #666; font-size: 12px; margin: 4px 0 0; }
+      .category { display: grid; grid-template-columns: 140px 1fr auto; gap: 8px; margin-bottom: 8px; }
+      .category textarea { font: inherit; padding: 4px 6px; resize: vertical; min-height: 2.2em; }
+      .actions { display: flex; gap: 8px; align-items: center; }
+      button { font: inherit; padding: 6px 12px; cursor: pointer; }
+      #status { color: #555; }
+      #status.error { color: #c00; }
+    </style>
+  </head>
+  <body>
+    <h1>Taby settings</h1>
+    <form id="settings">
+      <fieldset>
+        <legend>Decision model</legend>
+        <label for="provider">Provider</label>
+        <select id="provider">
+          <option value="laya">Laya (local helper)</option>
+          <option value="jev" disabled>TypeSafe Jev (not available yet)</option>
+        </select>
+        <label for="layaUrl">Helper URL</label>
+        <input id="layaUrl" type="url" required />
+        <p class="hint">Run <code>npm start</code> in <code>helper/</code>. Only 127.0.0.1 addresses are allowed.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Confidence</legend>
+        <label for="minConfidence">Minimum confidence: <output id="minConfidenceValue"></output></label>
+        <input id="minConfidence" type="range" min="0" max="1" step="0.05" />
+        <p class="hint">Tabs the model is less sure about than this are left where they are.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Categories</legend>
+        <p class="hint">The name becomes the group title. The model reads the description to decide what belongs, so describe the contents rather than just naming them.</p>
+        <div id="categories"></div>
+        <button type="button" id="addCategory">Add category</button>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit">Save</button>
+        <button type="button" id="reset">Reset to defaults</button>
+        <span id="status"></span>
+      </div>
+    </form>
+
+    <template id="categoryRow">
+      <div class="category">
+        <input type="text" class="key" placeholder="Name" required />
+        <textarea class="criteria" rows="1" placeholder="What belongs in this group" required></textarea>
+        <button type="button" class="remove" title="Remove">✕</button>
+      </div>
+    </template>
+
+    <script src="options.js" type="module"></script>
+  </body>
+</html>

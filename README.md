@@ -29,6 +29,11 @@ extension/   Firefox MV3 extension
 
 3. Click the Taby toolbar button → **Organise this window**.
 
+## Settings
+
+Popup → **Settings** (or `about:addons` → Taby → Preferences) to edit the categories,
+the minimum confidence below which tabs are left alone, and the layad URL.
+
 ## Testing the model directly
 
 Taby sends a request like this for each tab:
