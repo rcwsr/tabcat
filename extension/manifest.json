@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Taby",
+  "name": "Tav",
   "version": "0.1.0",
   "description": "Sorts your tabs into groups using a typed decision model.",
   "browser_specific_settings": {
     "gecko": {
-      "id": "taby@cwsr.dev",
+      "id": "tav@cwsr.dev",
       "strict_min_version": "142.0",
       "data_collection_permissions": {
         "required": [
@@ -29,7 +29,11 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Taby",
+    "default_title": "Tav",
     "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   }
 }
