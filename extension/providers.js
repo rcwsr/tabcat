@@ -1,6 +1,9 @@
 // Decision providers share one interface so the backend can be swapped:
 //   decide(state, questions) -> { answers, usage }
-// using the Jev/Laya systemOne request and response shapes.
+// using the Jev request and response shapes.
+
+// Talks to a local layad daemon (https://github.com/rcwsr/layad), which keeps
+// Laya resident and serves the Jev wire format on POST /ai/run.
 
 export class LayaProvider {
   constructor(baseUrl) {
@@ -10,17 +13,19 @@ export class LayaProvider {
   async decide(state, questions) {
     let res;
     try {
-      res = await fetch(`${this.baseUrl}/system-one`, {
+      res = await fetch(`${this.baseUrl}/ai/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ state, questions }),
       });
     } catch {
-      throw new Error(`Can't reach the Taby helper at ${this.baseUrl}. Is it running?`);
+      throw new Error(`Can't reach layad at ${this.baseUrl}. Is it running? Try "layad status".`);
     }
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? `Helper returned ${res.status}`);
+      // layad is FastAPI, which reports errors as { detail } (a string or a validation list).
+      const detail = body.detail && (typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail));
+      throw new Error(detail ? `layad: ${detail}` : `layad returned ${res.status}`);
     }
     return res.json();
   }

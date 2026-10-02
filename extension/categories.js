@@ -13,7 +13,7 @@ export const DEFAULT_CATEGORIES = {
 
 export const DEFAULT_SETTINGS = {
   provider: "laya",
-  layaUrl: "http://127.0.0.1:7357",
+  layaUrl: "http://127.0.0.1:8918",
   jevApiKey: "",
   // Tabs below this confidence are left where they are.
   minConfidence: 0.5,
