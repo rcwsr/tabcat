@@ -1,4 +1,4 @@
-# Taby
+# Tav
 
 A Firefox extension that sorts your tabs into groups using a typed decision model.
 Development runs on [Laya](https://github.com/receptron/laya) locally, so tab data never
@@ -27,16 +27,16 @@ extension/   Firefox MV3 extension
    `about:debugging` → This Firefox → Load Temporary Add-on → pick `extension/manifest.json`.
    Or run `npx web-ext run -s extension`.
 
-3. Click the Taby toolbar button → **Organise this window**.
+3. Click the Tav toolbar button → **Organise this window**.
 
 ## Settings
 
-Popup → **Settings** (or `about:addons` → Taby → Preferences) to edit the categories,
+Popup → **Settings** (or `about:addons` → Tav → Preferences) to edit the categories,
 the minimum confidence below which tabs are left alone, and the layad URL.
 
 ## Testing the model directly
 
-Taby sends a request like this for each tab:
+Tav sends a request like this for each tab:
 
 ```sh
 curl -s http://127.0.0.1:8918/ai/run -H 'Content-Type: application/json' -d '{
