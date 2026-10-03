@@ -1,4 +1,4 @@
-// Pure helpers for automatic grouping: no browser APIs, so they can be tested in Node.
+// Pure helpers for the on-device models: no browser APIs, so they can be tested in Node.
 
 // Text the embedding model sees: the title plus the words of the URL path. Path words
 // help ("rust-lang ... ownership") and nothing leaves the machine, but numeric ids are noise.
@@ -96,4 +96,25 @@ export function nameCandidates(topic, keywords, hosts) {
       return true;
     })
     .slice(0, 8);
+}
+
+// Text the embedding model sees for a tab in categories mode: the title and the site.
+// Of the formats tried on 48 labelled tabs this matched most (37); path words added noise.
+export function choiceText({ title, url }) {
+  const site = url?.split("/")[0].replace(/^www\./, "");
+  return site ? `${title} (${site})` : title;
+}
+
+// Sharpness of chooseBySimilarity's softmax. Tested in test/model/categories.test.mjs.
+export const CHOICE_TEMPERATURE = 0.03;
+
+// Picks the option whose vector is most similar to `vector`. A softmax over the similarities
+// gives Laya-style probabilities, so the same minimum-confidence setting works for both.
+export function chooseBySimilarity(vector, options, temperature = CHOICE_TEMPERATURE) {
+  const keys = Object.keys(options);
+  const scores = keys.map((k) => Math.exp(dot(options[k], vector) / temperature));
+  const total = scores.reduce((a, b) => a + b, 0);
+  const probabilities = Object.fromEntries(keys.map((k, i) => [k, scores[i] / total]));
+  const choice = keys.reduce((a, b) => (probabilities[b] > probabilities[a] ? b : a));
+  return { choice, probabilities };
 }
