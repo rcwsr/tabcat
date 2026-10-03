@@ -3,9 +3,10 @@
 import { copyFileSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
-const root = dirname(dirname(new URL(import.meta.url).pathname));
+const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const out = join(root, "extension", "vendor");
 // Both entry points live in the packages' dist/ folders.
 const transformersEntry = require.resolve("@huggingface/transformers");

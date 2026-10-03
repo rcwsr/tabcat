@@ -2,7 +2,7 @@
 // precision = tab pairs grouped together that belong together, recall = the reverse.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS } from "../../extension/categories.js";
+import { DEFAULT_SETTINGS } from "../../extension/settings.js";
 import { averageLinkage, tabText } from "../../extension/cluster.js";
 import { GROUPING_HELDOUT, GROUPING_TRAIN } from "../fixtures/tabs.mjs";
 import { embed } from "./embed.mjs";

@@ -47,14 +47,3 @@ export async function topic(prompt, onProgress) {
   const [out] = await model(prompt, { max_new_tokens: 6 });
   return out?.generated_text?.trim() ?? "";
 }
-
-// Firefox suspends an idle background page after ~30 s, even mid-download or while a
-// popup awaits a reply. Extension API calls count as activity, so make one regularly.
-export async function keepAlive(work) {
-  const timer = setInterval(() => browser.runtime.getPlatformInfo(), 10_000);
-  try {
-    return await work();
-  } finally {
-    clearInterval(timer);
-  }
-}
