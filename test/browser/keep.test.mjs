@@ -123,6 +123,44 @@ test("keeping tabs organised (categories mode, no permission for toasts)", { tim
 
   const [storm] = await ff.openTabs([STORM], { background: true });
   await waitForLayout(ff, (l) => l[storm] === "News", "a News group for the storm tab");
-  // The toast couldn't be shown, so the move is counted on the toolbar button.
-  assert.equal(await ff.command("badge"), "1");
+  // The toast couldn't be shown, so the move is counted on the toolbar button. That's set
+  // just after the tab is grouped, so wait for it.
+  const deadline = Date.now() + 10_000;
+  let badge;
+  while ((badge = await ff.command("badge")) !== "1" && Date.now() < deadline) await sleep(200);
+  assert.equal(badge, "1");
+});
+
+// A home page titled with just the site's name ("YouTube") scores close to anything: it
+// joined a group of two copies of bighelp.app's quick start. Its description is used
+// when it can be read; when it can't, such a tab only joins tabs from the same site.
+const BIGHELP = [
+  ["Quick start: Feed, Ideas and Goals · bighelp", "bighelp.app/quick-start"],
+  ["Quick start: Feed, Ideas and Goals · bighelp", "bighelp.app/quick-start?again"],
+];
+const YOUTUBE_META = {
+  description: "Enjoy the videos and music that you love, upload original content and share it all with friends, family and the world on YouTube.",
+  keywords: "video, sharing, camera phone, video phone, free, upload",
+};
+
+test("a home page with a bare title isn't pulled into an unrelated group", { timeout: 300_000 }, async (t) => {
+  const ff = await launch({ grantAllSites: true });
+  t.after(() => ff.close());
+  const bighelp = await ff.openTabs(BIGHELP);
+  await ff.organise({ settings: { mode: "auto" }, groups: [{ title: "Bighelp", urls: bighelp }], runs: 0 });
+  let youtube;
+
+  await t.test("without a description, it only joins tabs from the same site", async () => {
+    [youtube] = await ff.openTabs([["YouTube", "www.youtube.com/?no-description"]], { background: true });
+    // A group of its own (newGroupForLoneTabs is on by default), not Bighelp.
+    const layout = await waitForLayout(ff, (l) => l[youtube], "the YouTube tab to get a group");
+    assert.notEqual(layout[youtube], "Bighelp");
+  });
+
+  await t.test("with the page's description", async () => {
+    await ff.command("ungroup", youtube); // Now only Bighelp is left.
+    const [described] = await ff.openTabs([["YouTube", "www.youtube.com/", YOUTUBE_META]], { background: true });
+    const layout = await waitForLayout(ff, (l) => l[described], "the described YouTube tab to get a group");
+    assert.notEqual(layout[described], "Bighelp");
+  });
 });

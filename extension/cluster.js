@@ -16,6 +16,18 @@ export function tabText(title, url) {
   return path ? `${title} — ${path}` : title;
 }
 
+// Too little text to group by: a site's home page is often titled with just its name
+// ("YouTube"), and a bare name scores close to anything.
+export function isThin(text) {
+  return (text.match(/\p{L}[\p{L}\p{N}']*/gu) ?? []).length <= 3;
+}
+
+// Thin text with the page's own description and keywords (from its <meta> tags) added.
+export function withPageInfo(text, { description = "", keywords = "" } = {}) {
+  const info = [description.slice(0, 300), keywords.slice(0, 100)].map((s) => s.trim()).filter(Boolean).join(" ");
+  return info ? `${text} — ${info}` : text;
+}
+
 function dot(a, b) {
   let s = 0;
   for (let i = 0; i < a.length; i++) s += a[i] * b[i];
