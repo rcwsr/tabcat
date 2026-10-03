@@ -123,8 +123,12 @@ test("keeping tabs organised (categories mode, no permission for toasts)", { tim
 
   const [storm] = await ff.openTabs([STORM], { background: true });
   await waitForLayout(ff, (l) => l[storm] === "News", "a News group for the storm tab");
-  // The toast couldn't be shown, so the move is counted on the toolbar button.
-  assert.equal(await ff.command("badge"), "1");
+  // The toast couldn't be shown, so the move is counted on the toolbar button. That's set
+  // just after the tab is grouped, so wait for it.
+  const deadline = Date.now() + 10_000;
+  let badge;
+  while ((badge = await ff.command("badge")) !== "1" && Date.now() < deadline) await sleep(200);
+  assert.equal(badge, "1");
 });
 
 // A home page titled with just the site's name ("YouTube") scores close to anything: it
