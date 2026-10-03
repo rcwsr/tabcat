@@ -112,7 +112,10 @@ export const CHOICE_TEMPERATURE = 0.03;
 // gives Laya-style probabilities, so the same minimum-confidence setting works for both.
 export function chooseBySimilarity(vector, options, temperature = CHOICE_TEMPERATURE) {
   const keys = Object.keys(options);
-  const scores = keys.map((k) => Math.exp(dot(options[k], vector) / temperature));
+  const similarities = keys.map((k) => dot(options[k], vector));
+  // Subtracting the best similarity keeps exp() from overflowing at low temperatures.
+  const best = Math.max(...similarities);
+  const scores = similarities.map((s) => Math.exp((s - best) / temperature));
   const total = scores.reduce((a, b) => a + b, 0);
   const probabilities = Object.fromEntries(keys.map((k, i) => [k, scores[i] / total]));
   const choice = keys.reduce((a, b) => (probabilities[b] > probabilities[a] ? b : a));

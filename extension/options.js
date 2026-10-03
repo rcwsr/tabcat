@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS } from "./categories.js";
+import { DEFAULT_SETTINGS } from "./settings.js";
 import { FIREFOX_ML_PERMISSION } from "./firefox-ml.js";
 
 const form = document.getElementById("settings");
