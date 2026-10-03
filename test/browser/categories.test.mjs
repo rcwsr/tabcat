@@ -2,7 +2,7 @@
 // and Laya (skipped unless layad is running).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS } from "../../extension/categories.js";
+import { DEFAULT_SETTINGS } from "../../extension/settings.js";
 import { CATEGORY_TABS } from "../fixtures/tabs.mjs";
 import { launch } from "./firefox.mjs";
 
@@ -55,4 +55,25 @@ test("Tav's model and Firefox's built-in AI mostly agree", (t) => {
   const same = urls.filter((u) => layouts.firefox[u] === layouts.tav[u]).length;
   t.diagnostic(`${same}/${urls.length} tabs placed the same`);
   assert.ok(same / urls.length >= 0.85, `only ${same}/${urls.length} tabs placed the same`);
+});
+
+test("categories mode leaves the user's own groups alone", { timeout: 300_000 }, async (t) => {
+  const ff = await launch();
+  t.after(() => ff.close());
+  const tabs = CATEGORY_TABS.filter(([label]) => label === "dev" || label === "news");
+  const urls = await ff.openTabs(tabs.map(([, title, url]) => [title, url]));
+  // A group of the user's own with a dev and a news tab, and a stray dev tab in "News".
+  const mine = [urls[0], urls.find((u, i) => tabs[i][0] === "news")];
+  const stray = urls[1];
+  const [run] = await ff.organise({
+    settings: { mode: "categories", provider: "tav" },
+    groups: [
+      { title: "Reading list", urls: mine },
+      { title: "News", urls: [stray] },
+    ],
+  });
+  assert.equal(run.error, undefined);
+  for (const url of mine) assert.equal(run.layout[url], "Reading list", `${url} left the user's group`);
+  // Groups named after a category are Tav's to sort.
+  assert.equal(run.layout[stray], "Dev");
 });

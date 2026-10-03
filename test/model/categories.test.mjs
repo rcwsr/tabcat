@@ -1,7 +1,7 @@
 // Categories mode with the on-device model, on labelled tabs and the default categories.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS } from "../../extension/categories.js";
+import { DEFAULT_SETTINGS } from "../../extension/settings.js";
 import { choiceText, chooseBySimilarity } from "../../extension/cluster.js";
 import { CATEGORY_TABS } from "../fixtures/tabs.mjs";
 import { embed } from "./embed.mjs";
