@@ -105,9 +105,12 @@ export function choiceText({ title, url }) {
   return site ? `${title} (${site})` : title;
 }
 
+// Sharpness of chooseBySimilarity's softmax. Tested in test/model/categories.test.mjs.
+export const CHOICE_TEMPERATURE = 0.03;
+
 // Picks the option whose vector is most similar to `vector`. A softmax over the similarities
 // gives Laya-style probabilities, so the same minimum-confidence setting works for both.
-export function chooseBySimilarity(vector, options, temperature) {
+export function chooseBySimilarity(vector, options, temperature = CHOICE_TEMPERATURE) {
   const keys = Object.keys(options);
   const scores = keys.map((k) => Math.exp(dot(options[k], vector) / temperature));
   const total = scores.reduce((a, b) => a + b, 0);

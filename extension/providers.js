@@ -36,11 +36,9 @@ export class LayaProvider {
 }
 
 // Answers choice questions on the device: the option whose description is most similar to
-// the tab (by sentence embeddings) wins. On 48 labelled tabs with the default categories it
-// got 37 right to Laya's 36, but its confidence is rougher: at 0.5 it placed 43 tabs, 34
-// correctly, where Laya placed 31, 28 correctly.
-const TEMPERATURE = 0.03;
-
+// the tab (by sentence embeddings) wins. Its confidence is rougher than Laya's: on 48
+// labelled tabs at 0.5 it placed 43, 32 correctly, where Laya placed 31, 28 correctly
+// (see test/browser/categories.test.mjs).
 export class EmbeddingProvider {
   constructor(embedFn) {
     this.embed = embedFn;
@@ -60,7 +58,7 @@ export class EmbeddingProvider {
       if (type !== "choice") throw new Error(`The on-device model can't answer "${type}" questions.`);
       const vectors = await this.#vectorsFor(Object.values(criteria));
       const options = Object.fromEntries(Object.keys(criteria).map((k, i) => [k, vectors[i]]));
-      answers[name] = chooseBySimilarity(vector, options, TEMPERATURE);
+      answers[name] = chooseBySimilarity(vector, options);
     }
     return { answers };
   }
