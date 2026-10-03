@@ -51,20 +51,6 @@ async function showMoves() {
     undo.addEventListener("click", async () => {
       await browser.runtime.sendMessage({ type: "undo", moveId: move.id });
       await showMoves();
-
-// keepOrganised is on by default, but Firefox only asks for a permission after a click, so
-// offer it here until it's granted.
-async function offerToasts() {
-  const { keepOrganised } = await browser.storage.local.get({ keepOrganised: DEFAULT_SETTINGS.keepOrganised });
-  allowToasts.hidden = !keepOrganised || (await browser.permissions.contains(TOAST_PERMISSION));
-}
-
-allowToasts.querySelector("button").addEventListener("click", async () => {
-  await browser.permissions.request(TOAST_PERMISSION);
-  await offerToasts();
-});
-
-offerToasts();
     });
     row.append(text, undo);
     list.append(row);
