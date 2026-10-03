@@ -6,10 +6,12 @@ import {
   averageSimilarity,
   choiceText,
   chooseBySimilarity,
+  isThin,
   nameCandidates,
   sharedKeywords,
   tabText,
   topicPrompt,
+  withPageInfo,
 } from "../../extension/cluster.js";
 
 test("tabText adds URL path words", () => {
@@ -80,4 +82,16 @@ test("chooseBySimilarity: lower temperature is more confident", () => {
   const sharp = chooseBySimilarity([1, 0], options, 0.01).probabilities.a;
   const soft = chooseBySimilarity([1, 0], options, 1).probabilities.a;
   assert.ok(sharp > 0.99 && soft < 0.6);
+});
+
+test("isThin: a bare site name or a few words", () => {
+  assert.equal(isThin("YouTube"), true);
+  assert.equal(isThin("BBC - Home"), true);
+  assert.equal(isThin("Quick start: Feed, Ideas and Goals · bighelp — quick start"), false);
+});
+
+test("withPageInfo adds the description and keywords, if there are any", () => {
+  assert.equal(withPageInfo("YouTube", { description: " Videos. ", keywords: "video, music" }), "YouTube — Videos. video, music");
+  assert.equal(withPageInfo("YouTube", { description: "", keywords: "" }), "YouTube");
+  assert.equal(withPageInfo("YouTube"), "YouTube");
 });

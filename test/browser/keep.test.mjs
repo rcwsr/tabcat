@@ -126,3 +126,30 @@ test("keeping tabs organised (categories mode, no permission for toasts)", { tim
   // The toast couldn't be shown, so the move is counted on the toolbar button.
   assert.equal(await ff.command("badge"), "1");
 });
+
+// A home page titled with just the site's name ("YouTube") scores close to anything, so
+// its description is used too. Without it, YouTube joined a group of two copies of
+// bighelp.app's quick start.
+const BIGHELP = [
+  ["Quick start: Feed, Ideas and Goals · bighelp", "bighelp.app/quick-start"],
+  ["Quick start: Feed, Ideas and Goals · bighelp", "bighelp.app/quick-start?again"],
+];
+const YOUTUBE = [
+  "YouTube",
+  "www.youtube.com/",
+  {
+    description: "Enjoy the videos and music that you love, upload original content and share it all with friends, family and the world on YouTube.",
+    keywords: "video, sharing, camera phone, video phone, free, upload",
+  },
+];
+
+test("a home page with a bare title isn't pulled into an unrelated group", { timeout: 300_000 }, async (t) => {
+  const ff = await launch({ grantAllSites: true });
+  t.after(() => ff.close());
+  const bighelp = await ff.openTabs(BIGHELP);
+  await ff.organise({ settings: { mode: "auto" }, groups: [{ title: "Bighelp", urls: bighelp }], runs: 0 });
+  const [youtube] = await ff.openTabs([YOUTUBE], { background: true });
+  // It gets a group of its own (newGroupForLoneTabs is on by default), not Bighelp.
+  const layout = await waitForLayout(ff, (l) => l[youtube], "the YouTube tab to get a group");
+  assert.notEqual(layout[youtube], "Bighelp");
+});

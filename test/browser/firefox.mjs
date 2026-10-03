@@ -2,7 +2,7 @@
 //
 // - Firefox sends all http:// traffic to a local server acting as its proxy, so tabs can
 //   have real hostnames ("http://www.bbc.co.uk/news") without touching the network. Each
-//   page just has the title the test gave it.
+//   page just has the title (and any <meta> tags) the test gave it.
 // - BiDi can't open moz-extension:// pages, so organise() installs a copy of the extension
 //   with a hook appended to background.js. The hook fetches a task from the server, runs it
 //   with the extension's own functions and posts the results back.
@@ -30,7 +30,7 @@ const PREFS = {
 
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".wasm": "application/wasm" };
 
-const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 
 // Pass to launch() as `firefoxML` to turn on Firefox's built-in AI and grant Tabcat trialML.
 const FIREFOX_ML_PREFS = { "browser.ml.enable": true, "extensions.ml.enabled": true };
@@ -38,6 +38,7 @@ const FIREFOX_ML_PREFS = { "browser.ml.enable": true, "extensions.ml.enabled": t
 // grantAllSites: grant Tabcat the optional "all websites" permission, for the toasts.
 export async function launch({ firefoxML = false, grantAllSites = false } = {}) {
   const titles = new Map(); // url -> page title
+  const metas = new Map(); // url -> { meta name: content }
   let task;
   let sendTask;
   let finished;
@@ -53,7 +54,10 @@ export async function launch({ firefoxML = false, grantAllSites = false } = {}) 
       const title = titles.get(new URL(req.url).href);
       if (title === undefined) return res.writeHead(404).end();
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      return res.end(`<!doctype html><title>${escape(title)}</title><p>${escape(title)}`);
+      const meta = Object.entries(metas.get(new URL(req.url).href) ?? {})
+        .map(([name, content]) => `<meta name="${escape(name)}" content="${escape(content)}">`)
+        .join("");
+      return res.end(`<!doctype html><title>${escape(title)}</title>${meta}<p>${escape(title)}`);
     }
     const path = new URL(req.url, "http://localhost").pathname;
     if (path === "/task") return task ? res.end(JSON.stringify(task)) : (sendTask = () => res.end(JSON.stringify(task)));
@@ -126,13 +130,15 @@ export async function launch({ firefoxML = false, grantAllSites = false } = {}) 
     browser,
     origin: `http://127.0.0.1:${port}`,
 
-    // Opens one tab per [title, url]; url is host + path, served over the proxy. With
-    // background, the tab you were on stays in front while the new one loads.
+    // Opens one tab per [title, url, meta]; url is host + path, served over the proxy, and
+    // meta is optional { name: content } for <meta> tags. With background, the tab you were
+    // on stays in front while the new one loads.
     async openTabs(tabs, { background = false } = {}) {
       const urls = [];
-      for (const [title, hostPath] of tabs) {
+      for (const [title, hostPath, meta] of tabs) {
         const url = new URL(`http://${hostPath}`).href;
         titles.set(url, title);
+        metas.set(url, meta);
         const [blank] = (await browser.pages()).filter((p) => p.url() === "about:blank");
         const page = blank ?? (await browser.newPage());
         if (background && front) await pages.get(front).bringToFront();
