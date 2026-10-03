@@ -1,10 +1,12 @@
 import { DEFAULT_SETTINGS } from "./settings.js";
 
-const button = document.getElementById("organise");
+const buttons = [...document.querySelectorAll("#organise, #reorganise, #undoReorganise")];
+const undoReorganise = document.getElementById("undoReorganise");
 const allowToasts = document.getElementById("allowToasts");
 // Lets Tabcat show "Moved … Undo" in the page you're on (see toast.js). Same as in options.js.
 const TOAST_PERMISSION = { origins: ["<all_urls>"] };
 const status = document.getElementById("status");
+let busy = false;
 
 function show(text, isError = false) {
   status.textContent = text;
@@ -13,24 +15,43 @@ function show(text, isError = false) {
 
 // The first automatic run downloads the models; the background page reports how it's going.
 browser.runtime.onMessage.addListener((message) => {
-  if (message?.type === "progress" && button.disabled) show(message.text);
+  if (message?.type === "progress" && busy) show(message.text);
 });
 
-button.addEventListener("click", async () => {
-  button.disabled = true;
-  show("Sorting tabs…");
+function describe(result) {
+  if (result.restored !== undefined) return result.restored ? "Groups put back." : "Nothing to put back.";
+  const lines = Object.entries(result.groups).map(([name, n]) => `${name}: ${n}`);
+  if (result.skipped) lines.push(`Left alone: ${result.skipped}`);
+  return lines.join("\n") || "Nothing to organise.";
+}
+
+// Sends `type` to the background page for this window and shows what it did.
+async function run(type, working) {
+  busy = true;
+  buttons.forEach((b) => (b.disabled = true));
+  show(working);
   try {
     const win = await browser.windows.getCurrent();
-    const result = await browser.runtime.sendMessage({ type: "organise", windowId: win.id });
-    const lines = Object.entries(result.groups).map(([name, n]) => `${name}: ${n}`);
-    if (result.skipped) lines.push(`Left alone: ${result.skipped}`);
-    show(lines.join("\n") || "Nothing to organise.");
+    show(describe(await browser.runtime.sendMessage({ type, windowId: win.id })));
   } catch (err) {
     show(err.message, true);
   } finally {
-    button.disabled = false;
+    busy = false;
+    buttons.forEach((b) => (b.disabled = false));
+    await offerUndoReorganise();
   }
-});
+}
+
+document.getElementById("organise").addEventListener("click", () => run("organise", "Sorting tabs…"));
+document.getElementById("reorganise").addEventListener("click", () => run("reorganise", "Sorting every tab again…"));
+undoReorganise.addEventListener("click", () => run("undoReorganise", "Putting groups back…"));
+
+async function offerUndoReorganise() {
+  const win = await browser.windows.getCurrent();
+  undoReorganise.hidden = !(await browser.runtime.sendMessage({ type: "canUndoReorganise", windowId: win.id }));
+}
+
+offerUndoReorganise();
 
 // Tabs Tabcat moved by itself (keepOrganised), newest first, each with Undo.
 async function showMoves() {
