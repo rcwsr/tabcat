@@ -18,11 +18,11 @@ async function layadRunning() {
 }
 
 // Floors sit a little under what each model scored on these tabs. Tav's model placed 43
-// (32 right), Firefox's 46 (35 right): same model and weights, but the runtimes differ
-// slightly, which flips tabs near the cut-off. Laya placed 31 (28 right).
+// (36 right), Firefox's 45 (36 right): same model and weights, but the runtimes differ
+// slightly, which flips tabs near the cut-off. Laya placed 30 (28 right).
 const MODELS = [
-  { provider: "tav", floor: { right: 30, precision: 0.7 } },
-  { provider: "firefox", floor: { right: 30, precision: 0.7 }, firefoxML: true },
+  { provider: "tav", floor: { right: 33, precision: 0.75 } },
+  { provider: "firefox", floor: { right: 33, precision: 0.75 }, firefoxML: true },
   { provider: "laya", floor: { right: 25, precision: 0.8 }, needsLayad: true },
 ];
 
