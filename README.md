@@ -21,7 +21,7 @@ models themselves download on first use.
    layad status
    ```
 
-3. Click the Tav toolbar button → **Organise this window**.
+3. Click the Tav toolbar button → **Tidy tabs**.
 
 ## Settings
 
