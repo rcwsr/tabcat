@@ -1,4 +1,5 @@
 import { DEFAULT_SETTINGS } from "./categories.js";
+import { FIREFOX_ML_PERMISSION } from "./firefox-ml.js";
 
 const form = document.getElementById("settings");
 const provider = document.getElementById("provider");
@@ -12,6 +13,11 @@ const modeInputs = document.querySelectorAll('input[name="mode"]');
 const autoSettings = document.getElementById("autoSettings");
 const categorySettings = document.getElementById("categorySettings");
 const modelSettings = document.getElementById("modelSettings");
+const tavHint = document.getElementById("tavHint");
+const firefoxSettings = document.getElementById("firefoxSettings");
+const firefoxStatus = document.getElementById("firefoxStatus");
+const allowFirefox = document.getElementById("allowFirefox");
+const layaSettings = document.getElementById("layaSettings");
 const groupingThreshold = document.getElementById("groupingThreshold");
 const groupingThresholdValue = document.getElementById("groupingThresholdValue");
 
@@ -42,15 +48,31 @@ function showMode(mode) {
   modelSettings.hidden = modelSettings.disabled = mode !== "categories";
 }
 
+// Only the chosen model's settings are shown; disabling layad's also stops its URL blocking Save.
+function showProvider(value) {
+  tavHint.hidden = value !== "tav";
+  firefoxSettings.hidden = value !== "firefox";
+  layaUrl.disabled = layaSettings.hidden = value !== "laya";
+}
+
+async function showFirefoxPermission() {
+  const granted = await browser.permissions.contains(FIREFOX_ML_PERMISSION);
+  firefoxStatus.textContent = granted
+    ? "Tav is allowed to use Firefox's built-in AI."
+    : "Tav needs your permission to use Firefox's built-in AI.";
+  allowFirefox.hidden = granted;
+}
+
 function render(settings) {
   for (const input of modeInputs) input.checked = input.value === settings.mode;
   showMode(settings.mode);
   groupingThreshold.value = settings.groupingThreshold;
   groupingThresholdValue.textContent = Number(settings.groupingThreshold).toFixed(2);
-  // A disabled option can't stay selected, so fall back to Laya.
+  // A disabled option can't stay selected, so fall back to the bundled model.
   provider.value = provider.querySelector(`option[value="${settings.provider}"]:not([disabled])`)
     ? settings.provider
-    : "laya";
+    : "tav";
+  showProvider(provider.value);
   layaUrl.value = settings.layaUrl;
   minConfidence.value = settings.minConfidence;
   minConfidenceValue.textContent = Number(settings.minConfidence).toFixed(2);
@@ -60,15 +82,19 @@ function render(settings) {
 
 // Returns settings to save, or throws with a message for the user.
 function collect() {
-  let url;
-  try {
-    url = new URL(layaUrl.value.trim());
-  } catch {
-    throw new Error("layad URL isn't a valid URL.");
-  }
-  // host_permissions only cover 127.0.0.1, and tab data must stay on this machine.
-  if (url.protocol !== "http:" || url.hostname !== "127.0.0.1") {
-    throw new Error("layad URL must be http://127.0.0.1:<port>.");
+  const settings = { mode: selectedMode(), groupingThreshold: Number(groupingThreshold.value), provider: provider.value };
+  if (provider.value === "laya") {
+    let url;
+    try {
+      url = new URL(layaUrl.value.trim());
+    } catch {
+      throw new Error("layad URL isn't a valid URL.");
+    }
+    // host_permissions only cover 127.0.0.1, and tab data must stay on this machine.
+    if (url.protocol !== "http:" || url.hostname !== "127.0.0.1") {
+      throw new Error("layad URL must be http://127.0.0.1:<port>.");
+    }
+    settings.layaUrl = url.origin;
   }
 
   const categories = {};
@@ -85,20 +111,21 @@ function collect() {
   }
   if (Object.keys(categories).length < 2) throw new Error("Add at least two categories.");
 
-  return {
-    mode: selectedMode(),
-    groupingThreshold: Number(groupingThreshold.value),
-    provider: provider.value,
-    layaUrl: url.origin,
-    minConfidence: Number(minConfidence.value),
-    categories,
-  };
+  return { ...settings, minConfidence: Number(minConfidence.value), categories };
 }
 
 for (const input of modeInputs) input.addEventListener("change", () => showMode(selectedMode()));
 
 groupingThreshold.addEventListener("input", () => {
   groupingThresholdValue.textContent = Number(groupingThreshold.value).toFixed(2);
+});
+
+provider.addEventListener("change", () => showProvider(provider.value));
+
+allowFirefox.addEventListener("click", async () => {
+  // Must run straight from the click: Firefox only shows permission prompts for user actions.
+  await browser.permissions.request(FIREFOX_ML_PERMISSION);
+  await showFirefoxPermission();
 });
 
 minConfidence.addEventListener("input", () => {
@@ -125,3 +152,4 @@ form.addEventListener("submit", async (event) => {
 });
 
 render(await browser.storage.local.get(DEFAULT_SETTINGS));
+await showFirefoxPermission();

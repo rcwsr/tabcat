@@ -8,9 +8,14 @@
     "postinstall": "node scripts/vendor.mjs",
     "lint": "npx --yes web-ext lint -s extension",
     "start": "npx --yes web-ext run -s extension",
-    "build": "node scripts/vendor.mjs && npx --yes web-ext build -s extension --overwrite-dest"
+    "build": "node scripts/vendor.mjs && npx --yes web-ext build -s extension --overwrite-dest",
+    "test": "node --test 'test/unit/*.test.mjs'",
+    "test:model": "node --test 'test/model/*.test.mjs'",
+    "test:browser": "node --test --test-concurrency=1 'test/browser/*.test.mjs'",
+    "test:all": "npm test && npm run test:model && npm run test:browser"
   },
   "devDependencies": {
-    "@huggingface/transformers": "4.3.0"
+    "@huggingface/transformers": "4.3.0",
+    "puppeteer-core": "25.12.0"
   }
 }

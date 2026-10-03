@@ -2,6 +2,10 @@
 //   decide(state, questions) -> { answers, usage }
 // using the Jev request and response shapes.
 
+import { chooseBySimilarity, choiceText } from "./cluster.js";
+import { embedWithFirefox } from "./firefox-ml.js";
+import { embed } from "./ml.js";
+
 // Talks to a local layad daemon (https://github.com/rcwsr/layad), which keeps
 // Laya resident and serves the Jev wire format on POST /ai/run.
 
@@ -31,6 +35,35 @@ export class LayaProvider {
   }
 }
 
+// Answers choice questions on the device: the option whose description is most similar to
+// the tab (by sentence embeddings) wins. Its confidence is rougher than Laya's: on 48
+// labelled tabs at 0.5 it placed 43, 32 correctly, where Laya placed 31, 28 correctly
+// (see test/browser/categories.test.mjs).
+export class EmbeddingProvider {
+  constructor(embedFn) {
+    this.embed = embedFn;
+    this.vectors = new Map(); // option description -> vector
+  }
+
+  async #vectorsFor(texts) {
+    const missing = texts.filter((t) => !this.vectors.has(t));
+    if (missing.length) (await this.embed(missing)).forEach((v, i) => this.vectors.set(missing[i], v));
+    return texts.map((t) => this.vectors.get(t));
+  }
+
+  async decide(state, questions) {
+    const [vector] = await this.embed([choiceText(state)]);
+    const answers = {};
+    for (const [name, { type, criteria }] of Object.entries(questions)) {
+      if (type !== "choice") throw new Error(`The on-device model can't answer "${type}" questions.`);
+      const vectors = await this.#vectorsFor(Object.values(criteria));
+      const options = Object.fromEntries(Object.keys(criteria).map((k, i) => [k, vectors[i]]));
+      answers[name] = chooseBySimilarity(vector, options);
+    }
+    return { answers };
+  }
+}
+
 export class JevProvider {
   constructor(apiKey) {
     this.apiKey = apiKey;
@@ -47,7 +80,11 @@ export function createProvider(settings) {
     case "jev":
       return new JevProvider(settings.jevApiKey);
     case "laya":
-    default:
       return new LayaProvider(settings.layaUrl);
+    case "firefox":
+      return new EmbeddingProvider(embedWithFirefox);
+    case "tav":
+    default:
+      return new EmbeddingProvider(embed);
   }
 }

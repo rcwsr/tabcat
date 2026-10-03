@@ -38,15 +38,25 @@
       </fieldset>
 
       <fieldset id="modelSettings">
-        <legend>Decision model</legend>
-        <label for="provider">Provider</label>
+        <legend>Model</legend>
+        <label for="provider">What sorts tabs into categories</label>
         <select id="provider">
-          <option value="laya">Laya via layad (local)</option>
+          <option value="tav">Built into Tav (on this computer)</option>
+          <option value="firefox">Firefox's built-in AI (on this computer, experimental)</option>
+          <option value="laya">Laya via layad (on this computer)</option>
           <option value="jev" disabled>TypeSafe Jev (not available yet)</option>
         </select>
-        <label for="layaUrl">layad URL</label>
-        <input id="layaUrl" type="url" required />
-        <p class="hint">Where <a href="https://github.com/rcwsr/layad">layad</a> is listening (check with <code>layad status</code>). Only 127.0.0.1 addresses are allowed.</p>
+        <p id="tavHint" class="hint">Uses the model Tav already downloads for automatic grouping. Nothing to set up.</p>
+        <div id="firefoxSettings">
+          <p id="firefoxStatus" class="hint"></p>
+          <button type="button" id="allowFirefox" hidden>Allow Firefox's built-in AI</button>
+          <p class="hint">Also turn it on in <code>about:config</code>: set <code>browser.ml.enable</code> and <code>extensions.ml.enabled</code> to <code>true</code>. Firefox downloads the model the first time.</p>
+        </div>
+        <div id="layaSettings">
+          <label for="layaUrl">layad URL</label>
+          <input id="layaUrl" type="url" required />
+          <p class="hint">Where <a href="https://github.com/rcwsr/layad">layad</a> is listening (check with <code>layad status</code>). Only 127.0.0.1 addresses are allowed.</p>
+        </div>
       </fieldset>
 
       <fieldset id="categorySettings">

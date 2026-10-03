@@ -1,0 +1,31 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # Also copies the model runtime into extension/vendor/ (postinstall).
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:model
+      # The runner image ships Firefox. Laya's test skips itself (no layad here).
+      - run: firefox --version
+      - run: npm run test:browser
+        env:
+          FIREFOX: firefox
