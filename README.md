@@ -19,9 +19,17 @@ Three models can do the sorting (Settings → Model):
 - **[Laya](https://github.com/receptron/laya) via layad**: a typed decision model running
   as a local service. Its confidence is more reliable, so fewer wrong guesses get through.
 
-On 48 labelled tabs with the default categories, the on-device model got 37 right and Laya
-36. At the default 0.5 minimum confidence, the on-device model placed 43 tabs (34 correctly)
-and Laya 31 (28 correctly).
+Measured in Firefox on 48 labelled tabs with the default categories, at the default 0.5
+minimum confidence:
+
+| Model | Tabs placed | Placed correctly |
+|---|---|---|
+| Built into Tav | 43 | 32 |
+| Firefox's built-in AI | 46 | 35 |
+| Laya | 31 | 28 |
+
+Tav's and Firefox's copies of the model run on different runtimes, so a few tabs near the
+cut-off land differently (45 of 48 matched).
 
 ## How automatic grouping works
 
@@ -80,6 +88,20 @@ npm run build    # self-contained package in web-ext-artifacts/
 
 Or load it by hand: `about:debugging` → This Firefox → Load Temporary Add-on →
 `extension/manifest.json` (after `npm install`).
+
+## Tests
+
+```sh
+npm test                 # unit tests for the pure helpers (instant, offline)
+npm run test:model       # grouping and categories quality floors, using the real model in Node
+npm run test:browser     # headless Firefox with the real extension
+npm run test:all
+```
+
+The browser tests need Firefox 142+ (set `FIREFOX` to its binary if it isn't in the default
+place). They give tabs real hostnames by sending Firefox's traffic through a local proxy, so
+they don't touch the network apart from downloading the models. Laya's test is skipped unless
+layad is running. Labelled tabs for all of them are in `test/fixtures/tabs.mjs`.
 
 ## Settings
 

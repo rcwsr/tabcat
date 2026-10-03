@@ -17,6 +17,8 @@ function engine() {
         modelHub: "huggingface",
         taskName: "feature-extraction",
         modelId: "Xenova/all-MiniLM-L6-v2",
+        // The same quantised weights as Tav's bundled copy (also Firefox's default today).
+        dtype: "q8",
       });
     } catch (err) {
       if (/disabled/i.test(err.message)) {
