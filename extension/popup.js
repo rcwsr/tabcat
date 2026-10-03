@@ -1,10 +1,5 @@
-import { DEFAULT_SETTINGS } from "./settings.js";
-
 const buttons = [...document.querySelectorAll("#organise, #reorganise, #undoReorganise")];
 const undoReorganise = document.getElementById("undoReorganise");
-const allowToasts = document.getElementById("allowToasts");
-// Lets Tabcat show "Moved … Undo" in the page you're on (see toast.js). Same as in options.js.
-const TOAST_PERMISSION = { origins: ["<all_urls>"] };
 const status = document.getElementById("status");
 let busy = false;
 
@@ -84,20 +79,6 @@ async function showMoves() {
 }
 
 showMoves();
-
-// keepOrganised is on by default, but Firefox only asks for a permission after a click, so
-// offer it here until it's granted.
-async function offerToasts() {
-  const { keepOrganised } = await browser.storage.local.get({ keepOrganised: DEFAULT_SETTINGS.keepOrganised });
-  allowToasts.hidden = !keepOrganised || (await browser.permissions.contains(TOAST_PERMISSION));
-}
-
-allowToasts.querySelector("button").addEventListener("click", async () => {
-  await browser.permissions.request(TOAST_PERMISSION);
-  await offerToasts();
-});
-
-offerToasts();
 
 document.getElementById("settings").addEventListener("click", (event) => {
   event.preventDefault();

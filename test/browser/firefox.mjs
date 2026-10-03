@@ -35,8 +35,7 @@ const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/
 // Pass to launch() as `firefoxML` to turn on Firefox's built-in AI and grant Tabcat trialML.
 const FIREFOX_ML_PREFS = { "browser.ml.enable": true, "extensions.ml.enabled": true };
 
-// grantAllSites: grant Tabcat the optional "all websites" permission, for the toasts.
-export async function launch({ firefoxML = false, grantAllSites = false } = {}) {
+export async function launch({ firefoxML = false } = {}) {
   const titles = new Map(); // url -> page title
   const metas = new Map(); // url -> { meta name: content }
   let task;
@@ -93,13 +92,13 @@ export async function launch({ firefoxML = false, grantAllSites = false } = {}) 
   const profile = mkdtempSync(join(tmpdir(), "tabcat-test-"));
   const prefs = { ...PREFS, "network.proxy.http_port": port, ...(firefoxML ? FIREFOX_ML_PREFS : {}) };
   writeFileSync(join(profile, "user.js"), Object.entries(prefs).map(([k, v]) => `user_pref(${JSON.stringify(k)}, ${JSON.stringify(v)});`).join("\n"));
-  if (firefoxML || grantAllSites) {
+  if (firefoxML) {
     writeFileSync(
       join(profile, "extension-preferences.json"),
       JSON.stringify({
         "tabcat@cwsr.dev": {
-          permissions: firefoxML ? ["trialML"] : [],
-          origins: grantAllSites ? ["<all_urls>"] : [],
+          permissions: ["trialML"],
+          origins: [],
           data_collection: [],
         },
       }),
@@ -185,6 +184,7 @@ export async function launch({ firefoxML = false, grantAllSites = false } = {}) 
     //   "colours"           { group title: colour }
     //   "set", settings     saves settings, as the settings page would
     //   "badge"             the toolbar button's badge text
+    //   "allSites", granted whether Tabcat may use websites; with true or false, sets it first
     //   "send", message     what the popup would send, for this window; replies with the answer
     //   "order"             the tabs' URLs, left to right
     //   "session"           everything in storage.session
@@ -255,6 +255,12 @@ function hook(origin) {
             reply = Object.fromEntries(groups.map((g) => [g.title, g.color]));
           } else if (name === "set") await browser.storage.local.set(arg);
           else if (name === "badge") reply = await browser.action.getBadgeText({ windowId: win.id });
+          else if (name === "allSites") {
+            const all = { origins: ["<all_urls>"] };
+            if (arg === false) await browser.permissions.remove(all);
+            if (arg === true) await browser.permissions.request(all);
+            reply = await browser.permissions.contains(all);
+          }
           else if (name === "send") reply = (await handleMessage({ ...arg, windowId: win.id })) ?? null;
           else if (name === "order") reply = (await browser.tabs.query({ windowId: win.id })).map((t) => t.url);
           else if (name === "session") reply = await browser.storage.session.get();
