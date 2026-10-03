@@ -120,8 +120,9 @@ export async function launch({ firefoxML = false } = {}) {
     },
 
     // Installs the extension with the test hook, then runs `task`:
-    //   { settings, groups: [{ title, urls }] (made before organising), runs }
-    // Resolves to [{ result, error, layout: { url: group title or null } }], one per run.
+    //   { settings, groups: [{ title, urls }] (made before organising), runs, toolbar }
+    // Resolves to [{ result, error, layout: { url: group title or null }, badge, tooltip }],
+    // one per run.
     async organise(newTask, { timeout = 240_000 } = {}) {
       if (!existsSync(join(EXTENSION_DIR, "vendor", "transformers.min.js"))) {
         throw new Error("extension/vendor/ is missing; run npm install");
@@ -170,16 +171,19 @@ function hook(origin) {
     for (let i = 0; i < (task.runs ?? 1); i++) {
       let result, error;
       try {
-        result = await keepAlive(() => organiseWindow(win.id));
+        // toolbar: run what a click on Tav's button runs, badge and tooltip included.
+        result = await (task.toolbar ? tidyWindow(win.id) : keepAlive(() => organiseWindow(win.id)));
       } catch (e) {
         error = e.message;
       }
+      const badge = await browser.action.getBadgeText({ windowId: win.id });
+      const tooltip = await browser.action.getTitle({ windowId: win.id });
       const groups = await browser.tabGroups.query({ windowId: win.id });
       const layout = {};
       for (const t of await browser.tabs.query({ windowId: win.id })) {
         layout[t.url] = groups.find((g) => g.id === t.groupId)?.title ?? null;
       }
-      runs.push({ result, error, layout });
+      runs.push({ result, error, layout, badge, tooltip });
     }
     await post({ runs });
   } catch (e) {

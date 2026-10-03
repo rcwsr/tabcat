@@ -84,16 +84,13 @@ async function organiseByCategory(windowId, tabs, settings) {
   return summarise(groups, skipped);
 }
 
-// Tells the popup, if it's open, what's taking so long.
-function progress(text) {
-  browser.runtime.sendMessage({ type: "progress", text }).catch(() => {});
-}
-
 // Finds groups by itself: similar tabs (by on-device embeddings) are clustered, ungrouped
 // tabs join an existing group they closely match, and new groups are named from their tabs.
 async function organiseAutomatically(windowId, tabs, settings) {
   if (!tabs.length) return summarise([], 0);
   const threshold = settings.groupingThreshold;
+  // The first run downloads the models; say how that's going.
+  const progress = (text) => setStatus(windowId, { title: text });
   const vectors = await embed(tabs.map((t) => tabText(t.title ?? "", t.url)), progress);
   const existing = await browser.tabGroups.query({ windowId });
 
@@ -146,8 +143,8 @@ async function organiseWindow(windowId) {
     : organiseAutomatically(windowId, tabs, settings);
 }
 
-// Firefox suspends an idle background page after ~30 s, even mid-download or while the
-// popup awaits a reply. Extension API calls count as activity, so make one regularly.
+// Firefox suspends an idle background page after ~30 s, even mid-download or
+// mid-sort. Extension API calls count as activity, so make one regularly.
 async function keepAlive(work) {
   const timer = setInterval(() => browser.runtime.getPlatformInfo(), 10_000);
   try {
@@ -157,8 +154,8 @@ async function keepAlive(work) {
   }
 }
 
-// One run per window at a time: a second click (say, from a reopened popup) waits for the
-// run in progress instead of grouping the same tabs twice.
+// One run per window at a time: a second click waits for the run in progress instead of
+// grouping the same tabs twice.
 const running = new Map();
 
 function organiseOnce(windowId) {
@@ -168,6 +165,46 @@ function organiseOnce(windowId) {
   return running.get(windowId);
 }
 
-browser.runtime.onMessage.addListener((message) => {
-  if (message?.type === "organise") return organiseOnce(message.windowId);
+// The toolbar button is the only UI: its badge and tooltip show what Tav is doing.
+const BADGE_COLOURS = { busy: "#666", done: "#2a7d2a", error: "#c00" };
+
+async function setStatus(windowId, { badge, colour, title }) {
+  if (badge !== undefined) await browser.action.setBadgeText({ windowId, text: badge });
+  if (colour) await browser.action.setBadgeBackgroundColor({ windowId, color: BADGE_COLOURS[colour] });
+  if (title !== undefined) await browser.action.setTitle({ windowId, title: `Tav: ${title}` });
+}
+
+function describeResult({ organised, skipped, groups }) {
+  const parts = Object.entries(groups).map(([name, n]) => `${name} ${n}`);
+  if (skipped) parts.push(`${skipped} left alone`);
+  return organised ? `grouped ${parts.join(", ")}` : skipped ? `nothing grouped, ${skipped} left alone` : "nothing to tidy";
+}
+
+async function tidyWindow(windowId) {
+  if (!running.has(windowId)) await setStatus(windowId, { badge: "…", colour: "busy", title: "sorting tabs…" });
+  try {
+    const result = await organiseOnce(windowId);
+    await setStatus(windowId, {
+      badge: result.organised ? String(result.organised) : "✓",
+      colour: "done",
+      title: `${describeResult(result)}. Click to tidy again.`,
+    });
+    // The count is only news for a moment; the tooltip keeps the details.
+    setTimeout(() => running.has(windowId) || browser.action.setBadgeText({ windowId, text: "" }), 5000);
+    return result;
+  } catch (err) {
+    // Left showing until the next click, so it isn't missed.
+    await setStatus(windowId, { badge: "!", colour: "error", title: `${err.message.replace(/\.?$/, ".")} Click to try again.` });
+    throw err;
+  }
+}
+
+browser.action.onClicked.addListener((tab) => tidyWindow(tab.windowId).catch(() => {}));
+
+// Settings live in the button's right-click menu.
+browser.runtime.onInstalled.addListener(() => {
+  browser.menus.create({ id: "settings", title: "Settings", contexts: ["action"] });
+});
+browser.menus.onClicked.addListener((info) => {
+  if (info.menuItemId === "settings") browser.runtime.openOptionsPage();
 });

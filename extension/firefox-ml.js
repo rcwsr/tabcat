@@ -10,7 +10,7 @@ let ready;
 function engine() {
   ready ??= (async () => {
     if (!browser.trial?.ml) {
-      throw new Error("Tav needs permission to use Firefox's built-in AI. Open Settings to allow it.");
+      throw new Error("Tav needs permission to use Firefox's built-in AI. Right-click the Tav button → Settings to allow it.");
     }
     try {
       await browser.trial.ml.createEngine({
