@@ -27,12 +27,14 @@ function stubBrowserApis() {
         },
       },
     },
+    // Granted permissions are remembered one by one; set sessionStorage "deny" to refuse.
     permissions: {
-      async contains() {
-        return session.getItem("granted") === "1";
+      async contains(p) {
+        return session.getItem(`granted ${JSON.stringify(p)}`) === "1";
       },
-      async request() {
-        session.setItem("granted", "1");
+      async request(p) {
+        if (session.getItem("deny")) return false;
+        session.setItem(`granted ${JSON.stringify(p)}`, "1");
         return true;
       },
     },
@@ -86,6 +88,22 @@ test("settings page", { timeout: 120_000 }, async (t) => {
     const s = await stored();
     assert.equal(s.mode, "auto");
     assert.equal(s.groupingThreshold, 0.3);
+  });
+
+  await t.test("keeping tabs organised asks to show messages on pages", async () => {
+    assert.equal(await page.$eval("#keepOrganised", (e) => e.checked), false);
+    assert.equal(await hidden("#toastStatus"), true);
+    // Refused: moves will be listed in the popup instead, and there's a button to ask again.
+    await page.evaluate(() => sessionStorage.setItem("deny", "1"));
+    await page.click("#keepOrganised");
+    await page.waitForFunction(() => !document.getElementById("allowToasts").hidden);
+    assert.match(await text("#toastStatus"), /listed in Tav's popup/);
+    await page.evaluate(() => sessionStorage.removeItem("deny"));
+    await page.click("#allowToasts");
+    await page.waitForFunction(() => document.getElementById("allowToasts").hidden);
+    assert.match(await text("#toastStatus"), /message with Undo at the bottom/);
+    assert.deepEqual(await save(), { error: false, text: "Saved." });
+    assert.equal((await stored()).keepOrganised, true);
   });
 
   await t.test("categories mode shows categories and the model, defaulting to Tav's", async () => {

@@ -27,6 +27,38 @@ button.addEventListener("click", async () => {
   }
 });
 
+// Tabs Tav moved by itself (keepOrganised), newest first, each with Undo.
+async function showMoves() {
+  const win = await browser.windows.getCurrent();
+  const { moves } = await browser.storage.session.get({ moves: [] });
+  const mine = moves.filter((m) => m.windowId === win.id).slice(0, 5);
+  const list = document.getElementById("moves");
+  list.hidden = !mine.length;
+  list.querySelectorAll(".move").forEach((row) => row.remove());
+  for (const move of mine) {
+    const row = document.createElement("div");
+    row.className = "move";
+    const text = document.createElement("span");
+    text.textContent = `“${move.tabTitle}” → ${move.group}`;
+    text.title = text.textContent;
+    const undo = document.createElement("button");
+    undo.textContent = "Undo";
+    undo.addEventListener("click", async () => {
+      await browser.runtime.sendMessage({ type: "undo", moveId: move.id });
+      await showMoves();
+    });
+    row.append(text, undo);
+    list.append(row);
+  }
+  // They've been seen now: clear the count on the toolbar button.
+  if (moves.some((m) => m.windowId === win.id && !m.seen)) {
+    await browser.storage.session.set({ moves: moves.map((m) => (m.windowId === win.id ? { ...m, seen: true } : m)) });
+  }
+  await browser.action.setBadgeText({ windowId: win.id, text: "" });
+}
+
+showMoves();
+
 document.getElementById("settings").addEventListener("click", (event) => {
   event.preventDefault();
   browser.runtime.openOptionsPage();

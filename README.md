@@ -29,6 +29,24 @@ Popup → **Settings** (or `about:addons` → Tav → Preferences) to choose aut
 or your own categories, how strict automatic grouping is, the categories and the minimum
 confidence below which tabs are left alone, and which model sorts into categories.
 
+## Keeping tabs organised
+
+Turn on **Keep tabs organised** in Settings and Tav puts new tabs into a matching group as
+you browse, without you clicking anything:
+
+- When a tab finishes loading in the background, or you switch away from a tab, Tav moves
+  it into the group it matches best. In automatic mode that's an existing group it's close
+  to; in categories mode it's its category's group. Tabs that match nothing stay put.
+- It never moves the tab you're looking at, and a tab you take out of a group (or Undo)
+  stays out.
+- The group the tab went into blinks, and a message at the bottom of the page you're on
+  says "Moved "…" to Dev" with **Undo**. Firefox doesn't let extensions animate the tab
+  bar or draw over the browser window, so these are the closest it allows.
+- The message needs permission to add it to websites, which Tav asks for when you turn
+  this on. Tav only adds the message; it doesn't read pages. Where the message can't
+  appear (Firefox's own pages, PDFs, or without the permission), the Tav button shows a
+  count and the popup lists recent moves with Undo.
+
 ## How automatic grouping works
 
 1. Each tab's title and URL path are turned into a vector by
@@ -107,6 +125,7 @@ extension/   Firefox MV3 extension
   ml.js           on-device models via transformers.js
   providers.js    categories-mode models: on-device embeddings / Laya (layad) / Jev (stub)
   firefox-ml.js   Firefox's built-in AI (browser.trial.ml)
+  toast.js        the "Moved … — Undo" message shown in pages
   settings.js     default categories and settings
   vendor/         transformers.js + ONNX runtime, copied in by `npm install` (not committed;
                   included in the built package)

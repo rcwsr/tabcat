@@ -20,6 +20,12 @@ const allowFirefox = document.getElementById("allowFirefox");
 const layaSettings = document.getElementById("layaSettings");
 const groupingThreshold = document.getElementById("groupingThreshold");
 const groupingThresholdValue = document.getElementById("groupingThresholdValue");
+const keepOrganised = document.getElementById("keepOrganised");
+const toastStatus = document.getElementById("toastStatus");
+const allowToasts = document.getElementById("allowToasts");
+
+// Lets Tav show "Moved … — Undo" in the page you're on. It's only used to add that message.
+const TOAST_PERMISSION = { origins: ["<all_urls>"] };
 
 function show(text, isError = false) {
   status.textContent = text;
@@ -63,9 +69,19 @@ async function showFirefoxPermission() {
   allowFirefox.hidden = granted;
 }
 
+async function showToastPermission() {
+  const granted = await browser.permissions.contains(TOAST_PERMISSION);
+  toastStatus.hidden = !keepOrganised.checked;
+  toastStatus.textContent = granted
+    ? "Each move shows a message with Undo at the bottom of the page you're on."
+    : "To show a message with Undo on the page you're on, Tav needs permission to add it to websites. Without it, moves are listed in Tav's popup instead.";
+  allowToasts.hidden = granted || !keepOrganised.checked;
+}
+
 function render(settings) {
   for (const input of modeInputs) input.checked = input.value === settings.mode;
   showMode(settings.mode);
+  keepOrganised.checked = settings.keepOrganised;
   groupingThreshold.value = settings.groupingThreshold;
   groupingThresholdValue.textContent = Number(settings.groupingThreshold).toFixed(2);
   // A disabled option can't stay selected, so fall back to the bundled model.
@@ -82,7 +98,7 @@ function render(settings) {
 
 // Returns settings to save, or throws with a message for the user.
 function collect() {
-  const settings = { mode: selectedMode(), groupingThreshold: Number(groupingThreshold.value), provider: provider.value };
+  const settings = { mode: selectedMode(), keepOrganised: keepOrganised.checked, groupingThreshold: Number(groupingThreshold.value), provider: provider.value };
   if (provider.value === "laya") {
     let url;
     try {
@@ -126,6 +142,19 @@ allowFirefox.addEventListener("click", async () => {
   // Must run straight from the click: Firefox only shows permission prompts for user actions.
   await browser.permissions.request(FIREFOX_ML_PERMISSION);
   await showFirefoxPermission();
+await showToastPermission();
+});
+
+keepOrganised.addEventListener("change", async () => {
+  // Ask before awaiting anything else, while this still counts as a user action. If it's
+  // already granted, Firefox doesn't ask again.
+  if (keepOrganised.checked) await browser.permissions.request(TOAST_PERMISSION);
+  await showToastPermission();
+});
+
+allowToasts.addEventListener("click", async () => {
+  await browser.permissions.request(TOAST_PERMISSION);
+  await showToastPermission();
 });
 
 minConfidence.addEventListener("input", () => {
@@ -138,6 +167,7 @@ document.getElementById("addCategory").addEventListener("click", () => {
 
 document.getElementById("reset").addEventListener("click", () => {
   render(DEFAULT_SETTINGS);
+  showToastPermission();
   show("Defaults restored. Save to keep them.");
 });
 
@@ -153,3 +183,4 @@ form.addEventListener("submit", async (event) => {
 
 render(await browser.storage.local.get(DEFAULT_SETTINGS));
 await showFirefoxPermission();
+await showToastPermission();
