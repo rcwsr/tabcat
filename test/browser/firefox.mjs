@@ -32,10 +32,10 @@ const TYPES = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/ja
 
 const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 
-// Pass to launch() as `firefoxML` to turn on Firefox's built-in AI and grant Tav trialML.
+// Pass to launch() as `firefoxML` to turn on Firefox's built-in AI and grant Tabcat trialML.
 const FIREFOX_ML_PREFS = { "browser.ml.enable": true, "extensions.ml.enabled": true };
 
-// grantAllSites: grant Tav the optional "all websites" permission, for the toasts.
+// grantAllSites: grant Tabcat the optional "all websites" permission, for the toasts.
 export async function launch({ firefoxML = false, grantAllSites = false } = {}) {
   const titles = new Map(); // url -> page title
   let task;
@@ -86,14 +86,14 @@ export async function launch({ firefoxML = false, grantAllSites = false } = {}) 
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const port = server.address().port;
 
-  const profile = mkdtempSync(join(tmpdir(), "tav-test-"));
+  const profile = mkdtempSync(join(tmpdir(), "tabcat-test-"));
   const prefs = { ...PREFS, "network.proxy.http_port": port, ...(firefoxML ? FIREFOX_ML_PREFS : {}) };
   writeFileSync(join(profile, "user.js"), Object.entries(prefs).map(([k, v]) => `user_pref(${JSON.stringify(k)}, ${JSON.stringify(v)});`).join("\n"));
   if (firefoxML || grantAllSites) {
     writeFileSync(
       join(profile, "extension-preferences.json"),
       JSON.stringify({
-        "tav@cwsr.dev": {
+        "tabcat@cwsr.dev": {
           permissions: firefoxML ? ["trialML"] : [],
           origins: grantAllSites ? ["<all_urls>"] : [],
           data_collection: [],

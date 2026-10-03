@@ -1,4 +1,4 @@
-// Categories mode in real Firefox with each model: Tav's bundled one, Firefox's built-in AI
+// Categories mode in real Firefox with each model: Tabcat's bundled one, Firefox's built-in AI
 // and Laya (skipped unless layad is running).
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -17,11 +17,11 @@ async function layadRunning() {
   }
 }
 
-// Floors sit a little under what each model scored on these tabs. Tav's model placed 43
+// Floors sit a little under what each model scored on these tabs. Tabcat's model placed 43
 // (36 right), Firefox's 45 (36 right): same model and weights, but the runtimes differ
 // slightly, which flips tabs near the cut-off. Laya placed 30 (28 right).
 const MODELS = [
-  { provider: "tav", floor: { right: 33, precision: 0.75 } },
+  { provider: "tabcat", floor: { right: 33, precision: 0.75 } },
   { provider: "firefox", floor: { right: 33, precision: 0.75 }, firefoxML: true },
   { provider: "laya", floor: { right: 25, precision: 0.8 }, needsLayad: true },
 ];
@@ -49,10 +49,10 @@ for (const { provider, floor, firefoxML, needsLayad } of MODELS) {
   });
 }
 
-test("Tav's model and Firefox's built-in AI mostly agree", (t) => {
-  if (!layouts.tav || !layouts.firefox) return t.skip("needs both runs above");
-  const urls = Object.keys(layouts.tav);
-  const same = urls.filter((u) => layouts.firefox[u] === layouts.tav[u]).length;
+test("Tabcat's model and Firefox's built-in AI mostly agree", (t) => {
+  if (!layouts.tabcat || !layouts.firefox) return t.skip("needs both runs above");
+  const urls = Object.keys(layouts.tabcat);
+  const same = urls.filter((u) => layouts.firefox[u] === layouts.tabcat[u]).length;
   t.diagnostic(`${same}/${urls.length} tabs placed the same`);
   assert.ok(same / urls.length >= 0.85, `only ${same}/${urls.length} tabs placed the same`);
 });
@@ -66,7 +66,7 @@ test("categories mode leaves the user's own groups alone", { timeout: 300_000 },
   const mine = [urls[0], urls.find((u, i) => tabs[i][0] === "news")];
   const stray = urls[1];
   const [run] = await ff.organise({
-    settings: { mode: "categories", provider: "tav" },
+    settings: { mode: "categories", provider: "tabcat" },
     groups: [
       { title: "Reading list", urls: mine },
       { title: "News", urls: [stray] },
@@ -74,6 +74,6 @@ test("categories mode leaves the user's own groups alone", { timeout: 300_000 },
   });
   assert.equal(run.error, undefined);
   for (const url of mine) assert.equal(run.layout[url], "Reading list", `${url} left the user's group`);
-  // Groups named after a category are Tav's to sort.
+  // Groups named after a category are Tabcat's to sort.
   assert.equal(run.layout[stray], "Dev");
 });

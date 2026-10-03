@@ -2,7 +2,7 @@ import { DEFAULT_SETTINGS } from "./settings.js";
 
 const button = document.getElementById("organise");
 const allowToasts = document.getElementById("allowToasts");
-// Lets Tav show "Moved … Undo" in the page you're on (see toast.js). Same as in options.js.
+// Lets Tabcat show "Moved … Undo" in the page you're on (see toast.js). Same as in options.js.
 const TOAST_PERMISSION = { origins: ["<all_urls>"] };
 const status = document.getElementById("status");
 
@@ -32,7 +32,7 @@ button.addEventListener("click", async () => {
   }
 });
 
-// Tabs Tav moved by itself (keepOrganised), newest first, each with Undo.
+// Tabs Tabcat moved by itself (keepOrganised), newest first, each with Undo.
 async function showMoves() {
   const win = await browser.windows.getCurrent();
   const { moves } = await browser.storage.session.get({ moves: [] });
