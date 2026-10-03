@@ -23,6 +23,7 @@ test("automatic grouping in Firefox", { timeout: 300_000 }, async (t) => {
     settings: { mode: "auto" },
     groups: [{ title: "My trip", urls: urls.slice(0, 2) }],
     runs: 2,
+    toolbar: true,
   });
   assert.equal(first.error, undefined);
 
@@ -55,9 +56,15 @@ test("automatic grouping in Firefox", { timeout: 300_000 }, async (t) => {
     }
   });
 
+  await t.test("the toolbar button shows what happened", () => {
+    assert.equal(first.badge, String(first.result.organised));
+    assert.match(first.tooltip, /^Tav: grouped .*My trip 1/);
+  });
+
   await t.test("a second run changes nothing", () => {
     assert.equal(second.error, undefined);
     assert.equal(second.result.organised, 0);
     assert.deepEqual(second.layout, first.layout);
+    assert.equal(second.badge, "✓");
   });
 });

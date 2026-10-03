@@ -77,3 +77,17 @@ test("categories mode leaves the user's own groups alone", { timeout: 300_000 },
   // Groups named after a category are Tav's to sort.
   assert.equal(run.layout[stray], "Dev");
 });
+
+test("a failure shows on the toolbar button", { timeout: 120_000 }, async (t) => {
+  const ff = await launch();
+  t.after(() => ff.close());
+  await ff.openTabs([["Home - BBC News", "www.bbc.co.uk/news"]]);
+  // Nothing listens on port 9, so Laya can't be reached.
+  const [run] = await ff.organise({
+    settings: { mode: "categories", provider: "laya", layaUrl: "http://127.0.0.1:9" },
+    toolbar: true,
+  });
+  assert.ok(run.error);
+  assert.equal(run.badge, "!");
+  assert.match(run.tooltip, /^Tav: .+ Click to try again\.$/);
+});

@@ -21,11 +21,15 @@ models themselves download on first use.
    layad status
    ```
 
-3. Click the Tav toolbar button → **Organise this window**.
+3. Click the Tav toolbar button to tidy the current window.
+
+The button's badge shows `…` while Tav works, then how many tabs it grouped, or a red `!`
+if something went wrong. Hover over the button for the details: download progress on the
+first run, what went where, or the error.
 
 ## Settings
 
-Popup → **Settings** (or `about:addons` → Tav → Preferences) to choose automatic grouping
+Right-click the Tav button → **Settings** (or `about:addons` → Tav → Preferences) to choose automatic grouping
 or your own categories, how strict automatic grouping is, the categories and the minimum
 confidence below which tabs are left alone, and which model sorts into categories.
 
