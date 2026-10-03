@@ -1,5 +1,14 @@
 import { DEFAULT_SETTINGS } from "./settings.js";
-import { averageLinkage, averageSimilarity, nameCandidates, sharedKeywords, tabText, topicPrompt } from "./cluster.js";
+import {
+  averageLinkage,
+  averageSimilarity,
+  isThin,
+  nameCandidates,
+  sharedKeywords,
+  tabText,
+  topicPrompt,
+  withPageInfo,
+} from "./cluster.js";
 import { embed, topic } from "./ml.js";
 import { createProvider } from "./providers.js";
 import { showToast } from "./toast.js";
@@ -90,12 +99,62 @@ function progress(text) {
   browser.runtime.sendMessage({ type: "progress", text }).catch(() => {});
 }
 
+// The page's <meta> description and keywords. Needs the optional permission for websites
+// (the same one as the toast); without it, or on pages scripts can't reach, there's none.
+// Read on the device and only used for the embedding.
+const pageInfoCache = new Map(); // "tabId url" -> { description, keywords }
+async function pageInfo(tab) {
+  const key = `${tab.id} ${tab.url}`;
+  if (!pageInfoCache.has(key)) {
+    if (pageInfoCache.size > 500) pageInfoCache.clear();
+    try {
+      const [{ result }] = await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          const meta = (selector) => document.querySelector(selector)?.content ?? "";
+          return {
+            description: meta('meta[name="description" i]') || meta('meta[property="og:description"]'),
+            keywords: meta('meta[name="keywords" i]'),
+          };
+        },
+      });
+      pageInfoCache.set(key, result);
+    } catch {
+      return null; // Not remembered: a page mid-navigation can be read once it's loaded.
+    }
+  }
+  return pageInfoCache.get(key);
+}
+
+// What the embedding model sees for each tab. Tabs with thin text (a home page titled
+// with just the site's name) get their page's description added; for other tabs it made
+// grouping worse, so they're left as they are.
+function textsFor(tabs) {
+  return Promise.all(
+    tabs.map(async (t) => {
+      const text = tabText(t.title ?? "", t.url);
+      if (!isThin(text) || t.status !== "complete") return text;
+      return withPageInfo(text, (await pageInfo(t)) ?? {});
+    }),
+  );
+}
+
+const hostname = (tab) => new URL(tab.url).hostname;
+
+// Whether tabs[i] may be matched with the tabs at ix. Text that's still thin after
+// textsFor (no description to be had) scores close to anything, so it only goes with tabs
+// from the same site.
+function canMatch(texts, tabs, i, ix) {
+  return !isThin(texts[i]) || ix.some((j) => hostname(tabs[j]) === hostname(tabs[i]));
+}
+
 // Finds groups by itself: similar tabs (by on-device embeddings) are clustered, ungrouped
 // tabs join an existing group they closely match, and new groups are named from their tabs.
 async function organiseAutomatically(windowId, tabs, settings) {
   if (!tabs.length) return summarise([], 0);
   const threshold = settings.groupingThreshold;
-  const vectors = await embed(tabs.map((t) => tabText(t.title ?? "", t.url)), progress);
+  const texts = await textsFor(tabs);
+  const vectors = await embed(texts, progress);
   const existing = await browser.tabGroups.query({ windowId });
 
   // Existing groups (Tabcat's or the user's) keep their tabs and can take in close matches.
@@ -103,15 +162,19 @@ async function organiseAutomatically(windowId, tabs, settings) {
   tabs.forEach((t, i) => isGrouped(t) && members.set(t.groupId, [...(members.get(t.groupId) ?? []), i]));
   const joins = new Map();
   const loose = [];
+  let thin = 0;
   tabs.forEach((tab, i) => {
     if (isGrouped(tab)) return;
     let best = null;
     for (const [groupId, ix] of members) {
+      if (!canMatch(texts, tabs, i, ix)) continue;
       const s = averageSimilarity(vectors, [i], ix);
       if (s >= threshold && (!best || s > best.s)) best = { groupId, s };
     }
     if (best) joins.set(best.groupId, [...(joins.get(best.groupId) ?? []), tab.id]);
-    else loose.push(i);
+    // A thin tab is only clustered by site, which joining a group covers well enough.
+    else if (!isThin(texts[i])) loose.push(i);
+    else thin++;
   });
   const groups = [...joins].map(([groupId, tabIds]) => ({
     groupId,
@@ -127,7 +190,7 @@ async function organiseAutomatically(windowId, tabs, settings) {
   }
 
   await applyGroups(windowId, groups);
-  const skipped = loose.length - clusters.reduce((n, c) => n + c.length, 0);
+  const skipped = thin + loose.length - clusters.reduce((n, c) => n + c.length, 0);
   return summarise(groups, skipped);
 }
 
@@ -259,6 +322,7 @@ browser.runtime.onMessage.addListener(handleMessage);
 // Titles often change just after a page loads, so wait for them to settle.
 const SETTLE_MS = 2000;
 const pending = new Map(); // tabId -> timer
+let placing = Promise.resolve();
 
 function schedule(tabId) {
   clearTimeout(pending.get(tabId));
@@ -266,7 +330,9 @@ function schedule(tabId) {
     tabId,
     setTimeout(() => {
       pending.delete(tabId);
-      placeTab(tabId).catch((err) => console.warn("Tabcat couldn't place a tab:", err));
+      // One at a time: a tab that finishes loading twice (a redirect, a page changing its
+      // own address) would otherwise be placed twice, by runs that saw different pages.
+      placing = placing.then(() => placeTab(tabId)).catch((err) => console.warn("Tabcat couldn't place a tab:", err));
     }, SETTLE_MS),
   );
 }
@@ -288,11 +354,15 @@ async function placeTab(tabId) {
   if (!tab || tab.status !== "complete" || isGrouped(tab) || !isOrganisable(tab)) return;
   if (running.has(tab.windowId) || (await sessionGet("leftAlone", [])).includes(tabId)) return;
   const target = settings.mode === "categories" ? await categoryFor(tab, settings) : await autoTarget(tab, settings);
-  if (target) await moveTab(tab, target);
+  if (!target) return;
+  // Deciding takes a moment: leave it if it's been grouped or moved on to another page since.
+  const now = await browser.tabs.get(tabId).catch(() => null);
+  if (!now || isGrouped(now) || now.url !== tab.url || running.has(now.windowId)) return;
+  await moveTab(tab, target);
 }
 
 // Tabs get re-checked every time you switch away from them, so remember their vectors.
-const vectorCache = new Map(); // tabText -> vector
+const vectorCache = new Map(); // textsFor -> vector
 
 async function embedCached(texts) {
   if (vectorCache.size > 1000) vectorCache.clear();
@@ -312,12 +382,14 @@ async function autoTarget(tab, settings) {
   // Loose tabs that can join it: not the one you're on, and not ones you took out of a group.
   const loose = others.filter((t) => !isGrouped(t) && !t.active && !leftAlone.includes(t.id));
   const tabs = [tab, ...grouped, ...loose];
-  const vectors = await embedCached(tabs.map((t) => tabText(t.title ?? "", t.url)));
+  const texts = await textsFor(tabs);
+  const vectors = await embedCached(texts);
 
   const byGroup = new Map();
   grouped.forEach((t, i) => byGroup.set(t.groupId, [...(byGroup.get(t.groupId) ?? []), i + 1]));
   let best = null;
   for (const [groupId, ix] of byGroup) {
+    if (!canMatch(texts, tabs, 0, ix)) continue;
     const s = averageSimilarity(vectors, [0], ix);
     if (s >= threshold && (!best || s > best.s)) best = { groupId, s };
   }
@@ -326,7 +398,10 @@ async function autoTarget(tab, settings) {
     return { groupId: best.groupId, title: title || "Group" };
   }
 
-  const looseIx = [0, ...loose.map((_, i) => 1 + grouped.length + i)];
+  const looseIx = [
+    0,
+    ...loose.map((_, i) => 1 + grouped.length + i).filter((i) => canMatch(texts, tabs, 0, [i]) && canMatch(texts, tabs, i, [0])),
+  ];
   const cluster = averageLinkage(vectors, looseIx, threshold).find((c) => c.includes(0));
   if (cluster.length < 2 && !settings.newGroupForLoneTabs) return null;
   const members = cluster.map((i) => tabs[i]);
