@@ -179,6 +179,9 @@ export async function launch({ firefoxML = false, grantAllSites = false } = {}) 
     //   "colours"           { group title: colour }
     //   "set", settings     saves settings, as the settings page would
     //   "badge"             the toolbar button's badge text
+    //   "send", message     what the popup would send, for this window; replies with the answer
+    //   "order"             the tabs' URLs, left to right
+    //   "session"           everything in storage.session
     async command(name, arg) {
       const reply = new Promise((resolve) => (replied = resolve));
       command = { name, arg };
@@ -246,6 +249,9 @@ function hook(origin) {
             reply = Object.fromEntries(groups.map((g) => [g.title, g.color]));
           } else if (name === "set") await browser.storage.local.set(arg);
           else if (name === "badge") reply = await browser.action.getBadgeText({ windowId: win.id });
+          else if (name === "send") reply = (await handleMessage({ ...arg, windowId: win.id })) ?? null;
+          else if (name === "order") reply = (await browser.tabs.query({ windowId: win.id })).map((t) => t.url);
+          else if (name === "session") reply = await browser.storage.session.get();
           else if (name === "ungroup") {
             const [tab] = (await browser.tabs.query({ windowId: win.id })).filter((t) => t.url === arg);
             await browser.tabs.ungroup(tab.id);

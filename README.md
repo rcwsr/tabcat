@@ -23,6 +23,11 @@ models themselves download on first use.
 
 3. Click the Tabcat toolbar button → **Tidy tabs**.
 
+**Tidy tabs** sorts the tabs that aren't in a group and leaves your own groups as they are.
+**Reorganise** starts over: it breaks up every group in the window, yours included, and
+sorts every tab again. **Undo reorganise** puts the old groups back (names, colours, order),
+until you next tidy or reorganise that window.
+
 ## Settings
 
 Popup → **Settings** (or `about:addons` → Tabcat → Preferences) to choose automatic grouping
