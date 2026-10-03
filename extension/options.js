@@ -23,10 +23,10 @@ const groupingThresholdValue = document.getElementById("groupingThresholdValue")
 const keepOrganised = document.getElementById("keepOrganised");
 const newGroupForLoneTabs = document.getElementById("newGroupForLoneTabs");
 const toastStatus = document.getElementById("toastStatus");
-const allowToasts = document.getElementById("allowToasts");
 
-// Lets Tabcat show "Moved … — Undo" in the page you're on. It's only used to add that message.
-const TOAST_PERMISSION = { origins: ["<all_urls>"] };
+// Lets Tabcat show "Moved … — Undo" in the page you're on. Granted at install; you can turn
+// it off in about:addons.
+const ALL_SITES = { origins: ["<all_urls>"] };
 
 function show(text, isError = false) {
   status.textContent = text;
@@ -71,12 +71,7 @@ async function showFirefoxPermission() {
 }
 
 async function showToastPermission() {
-  const granted = await browser.permissions.contains(TOAST_PERMISSION);
-  toastStatus.hidden = !keepOrganised.checked;
-  toastStatus.textContent = granted
-    ? "Each move shows a message with Undo at the bottom of the page you're on."
-    : "To show a message with Undo on the page you're on, Tabcat needs permission to add it to websites. Without it, moves are listed in Tabcat's popup instead.";
-  allowToasts.hidden = granted || !keepOrganised.checked;
+  toastStatus.hidden = !keepOrganised.checked || (await browser.permissions.contains(ALL_SITES));
 }
 
 function render(settings) {
@@ -110,7 +105,7 @@ function collect() {
     } catch {
       throw new Error("layad URL isn't a valid URL.");
     }
-    // host_permissions only cover 127.0.0.1, and tab data must stay on this machine.
+    // Tab data must stay on this machine.
     if (url.protocol !== "http:" || url.hostname !== "127.0.0.1") {
       throw new Error("layad URL must be http://127.0.0.1:<port>.");
     }
@@ -146,20 +141,9 @@ allowFirefox.addEventListener("click", async () => {
   // Must run straight from the click: Firefox only shows permission prompts for user actions.
   await browser.permissions.request(FIREFOX_ML_PERMISSION);
   await showFirefoxPermission();
-await showToastPermission();
 });
 
-keepOrganised.addEventListener("change", async () => {
-  // Ask before awaiting anything else, while this still counts as a user action. If it's
-  // already granted, Firefox doesn't ask again.
-  if (keepOrganised.checked) await browser.permissions.request(TOAST_PERMISSION);
-  await showToastPermission();
-});
-
-allowToasts.addEventListener("click", async () => {
-  await browser.permissions.request(TOAST_PERMISSION);
-  await showToastPermission();
-});
+keepOrganised.addEventListener("change", showToastPermission);
 
 minConfidence.addEventListener("input", () => {
   minConfidenceValue.textContent = Number(minConfidence.value).toFixed(2);

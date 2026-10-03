@@ -16,7 +16,6 @@ function stubBrowserApis() {
     ],
   };
   let snapshot = false;
-  let granted = false;
   window.sent = [];
   window.badge = "1";
   const answers = {
@@ -44,10 +43,6 @@ function stubBrowserApis() {
       local: { get: async (defaults) => defaults },
     },
     action: { setBadgeText: async ({ text }) => (window.badge = text) },
-    permissions: {
-      contains: async () => granted,
-      request: async () => (granted = true),
-    },
   };
 }
 
@@ -77,12 +72,6 @@ test("popup", { timeout: 120_000 }, async (t) => {
     await page.click(".move button");
     await page.waitForFunction(() => document.querySelectorAll(".move").length === 1);
     assert.deepEqual(await page.evaluate(() => window.sent), [{ type: "undo", moveId: 2 }]);
-  });
-
-  await t.test("offers to show moves on pages until allowed", async () => {
-    assert.equal(await hidden("#allowToasts"), false);
-    await page.click("#allowToasts button");
-    await page.waitForFunction(() => document.getElementById("allowToasts").hidden);
   });
 
   await t.test("Tidy tabs shows what it did, with no Undo", async () => {
