@@ -169,17 +169,86 @@ async function keepAlive(work) {
 // run in progress instead of grouping the same tabs twice.
 const running = new Map();
 
-function organiseOnce(windowId) {
+function runOnce(windowId, work) {
   if (!running.has(windowId)) {
-    running.set(windowId, keepAlive(() => organiseWindow(windowId)).finally(() => running.delete(windowId)));
+    running.set(windowId, keepAlive(work).finally(() => running.delete(windowId)));
   }
   return running.get(windowId);
 }
 
-browser.runtime.onMessage.addListener((message) => {
-  if (message?.type === "organise") return organiseOnce(message.windowId);
-  if (message?.type === "undo") return undoMove(message.moveId);
-});
+// Lets the onUpdated events from our own ungrouping arrive while the run still counts as
+// running, so they aren't taken for the user pulling tabs out of groups.
+const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
+
+// Reorganise starts over: every group in the window is broken up and all its tabs sorted
+// again. The layout before is kept (per window, until the next Tidy or Reorganise) so Undo
+// can put it back.
+async function reorganiseWindow(windowId) {
+  const tabs = (await browser.tabs.query({ windowId })).filter(isOrganisable);
+  const groups = await browser.tabGroups.query({ windowId });
+  const leftAlone = await sessionGet("leftAlone", []);
+  const ids = tabs.map((t) => t.id);
+  const snapshot = {
+    tabs: tabs.map((t) => ({ id: t.id, index: t.index, group: isGrouped(t) ? groups.findIndex((g) => g.id === t.groupId) : null })),
+    groups: groups.map(({ title, color, collapsed }) => ({ title, color, collapsed })),
+    leftAlone: leftAlone.filter((id) => ids.includes(id)),
+  };
+  const grouped = tabs.filter(isGrouped).map((t) => t.id);
+  if (grouped.length) await browser.tabs.ungroup(grouped);
+  await settle();
+  // Everything gets sorted, including tabs once taken out of a group.
+  await browser.storage.session.set({ leftAlone: leftAlone.filter((id) => !ids.includes(id)) });
+  const result = await organiseWindow(windowId);
+  await setSnapshot(windowId, snapshot);
+  return { ...result, canUndo: true };
+}
+
+async function setSnapshot(windowId, snapshot) {
+  const { [windowId]: _, ...others } = await sessionGet("reorganised", {});
+  await browser.storage.session.set({ reorganised: snapshot ? { ...others, [windowId]: snapshot } : others });
+}
+
+// Puts back the layout from before Reorganise, for the tabs that are still open.
+async function restoreWindow(windowId) {
+  const snapshot = (await sessionGet("reorganised", {}))[windowId];
+  if (!snapshot) return { restored: false };
+  await setSnapshot(windowId, null);
+  const open = new Set((await browser.tabs.query({ windowId })).map((t) => t.id));
+  const tabs = snapshot.tabs.filter((t) => open.has(t.id));
+  if (tabs.length) await browser.tabs.ungroup(tabs.map((t) => t.id));
+  // Lowest first, so each lands where it was.
+  for (const t of tabs.toSorted((a, b) => a.index - b.index)) await browser.tabs.move(t.id, { index: t.index });
+  for (const [i, { title, color, collapsed }] of snapshot.groups.entries()) {
+    const tabIds = tabs.filter((t) => t.group === i).map((t) => t.id);
+    if (!tabIds.length) continue;
+    const groupId = await browser.tabs.group({ tabIds, createProperties: { windowId } });
+    await browser.tabGroups.update(groupId, { title, color, collapsed });
+  }
+  // Landing between two tabs of a group would have put a loose tab in that group.
+  const loose = tabs.filter((t) => t.group === null).map((t) => t.id);
+  if (loose.length) await browser.tabs.ungroup(loose);
+  await settle();
+  const leftAlone = await sessionGet("leftAlone", []);
+  await browser.storage.session.set({ leftAlone: [...new Set([...leftAlone, ...snapshot.leftAlone])] });
+  return { restored: true };
+}
+
+function handleMessage(message) {
+  const { type, windowId } = message ?? {};
+  if (type === "organise") {
+    // A Tidy afterwards is a new starting point; Undo would throw its work away.
+    return runOnce(windowId, async () => {
+      await setSnapshot(windowId, null);
+      return organiseWindow(windowId);
+    });
+  }
+  if (type === "reorganise") return runOnce(windowId, () => reorganiseWindow(windowId));
+  if (type === "undoReorganise") return runOnce(windowId, () => restoreWindow(windowId));
+  if (type === "canUndoReorganise") return sessionGet("reorganised", {}).then((s) => Boolean(s[windowId]));
+  if (type === "undo") return undoMove(message.moveId);
+}
+
+browser.runtime.onMessage.addListener(handleMessage);
 
 // --- Keeping tabs organised ---
 // With keepOrganised on, a tab is grouped a moment after it loads: it joins a matching
@@ -355,8 +424,9 @@ async function undoMove(moveId) {
 }
 
 browser.tabs.onUpdated.addListener((tabId, change, tab) => {
-  // Taken out of a group (by you, or by Undo): don't put it back.
-  if (change.groupId === -1) leaveAlone(tabId);
+  // Taken out of a group (by you, or by Undo): don't put it back. Reorganise and its Undo
+  // ungroup tabs too, but only to sort them again.
+  if (change.groupId === -1 && !running.has(tab.windowId)) leaveAlone(tabId);
   if (change.status === "complete") schedule(tabId);
 });
 
