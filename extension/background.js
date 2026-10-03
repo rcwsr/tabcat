@@ -245,25 +245,28 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 200));
 
 // Reorganise starts over: every group in the window is broken up and all its tabs sorted
 // again. The layout before is kept (per window, until the next Tidy or Reorganise) so Undo
-// can put it back.
+// can put it back. If sorting fails, it's put back straight away.
 async function reorganiseWindow(windowId) {
   const tabs = (await browser.tabs.query({ windowId })).filter(isOrganisable);
   const groups = await browser.tabGroups.query({ windowId });
   const leftAlone = await sessionGet("leftAlone", []);
   const ids = tabs.map((t) => t.id);
-  const snapshot = {
+  await setSnapshot(windowId, {
     tabs: tabs.map((t) => ({ id: t.id, index: t.index, group: isGrouped(t) ? groups.findIndex((g) => g.id === t.groupId) : null })),
     groups: groups.map(({ title, color, collapsed }) => ({ title, color, collapsed })),
     leftAlone: leftAlone.filter((id) => ids.includes(id)),
-  };
-  const grouped = tabs.filter(isGrouped).map((t) => t.id);
-  if (grouped.length) await browser.tabs.ungroup(grouped);
-  await settle();
-  // Everything gets sorted, including tabs once taken out of a group.
-  await browser.storage.session.set({ leftAlone: leftAlone.filter((id) => !ids.includes(id)) });
-  const result = await organiseWindow(windowId);
-  await setSnapshot(windowId, snapshot);
-  return { ...result, canUndo: true };
+  });
+  try {
+    const grouped = tabs.filter(isGrouped).map((t) => t.id);
+    if (grouped.length) await browser.tabs.ungroup(grouped);
+    await settle();
+    // Everything gets sorted, including tabs once taken out of a group.
+    await browser.storage.session.set({ leftAlone: leftAlone.filter((id) => !ids.includes(id)) });
+    return { ...(await organiseWindow(windowId)), canUndo: true };
+  } catch (err) {
+    await restoreWindow(windowId);
+    throw err;
+  }
 }
 
 async function setSnapshot(windowId, snapshot) {

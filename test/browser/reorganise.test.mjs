@@ -34,6 +34,18 @@ test("reorganise and undo", { timeout: 300_000 }, async (t) => {
   };
   assert.equal(before.leftAlone.length, 1);
 
+  await t.test("if sorting fails, the groups are put back", async () => {
+    // Laya isn't running at this address, so sorting into categories throws.
+    await ff.command("set", { mode: "categories", provider: "laya", layaUrl: "http://127.0.0.1:9" });
+    await assert.rejects(ff.command("send", { type: "reorganise" }));
+    assert.deepEqual(await ff.command("layout"), before.layout);
+    assert.deepEqual(await ff.command("order"), before.order);
+    assert.deepEqual(await ff.command("colours"), before.colours);
+    assert.deepEqual((await ff.command("session")).leftAlone, before.leftAlone);
+    assert.equal(await ff.command("send", { type: "canUndoReorganise" }), false);
+    await ff.command("set", { mode: "auto" });
+  });
+
   await t.test("breaks up every group and sorts all the tabs", async () => {
     const result = await ff.command("send", { type: "reorganise" });
     assert.equal(result.canUndo, true);

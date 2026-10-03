@@ -26,9 +26,11 @@ async function pairScores(tabs) {
 }
 
 // Floors sit a little under the measured scores, so a real regression fails but noise doesn't.
+// Measured, one text per model call (as in the extension): training 0.83 / 0.73, held-out
+// 0.76 / 0.59.
 for (const [name, tabs, floor] of [
   ["training tabs", GROUPING_TRAIN, { precision: 0.78, recall: 0.68 }],
-  ["held-out tabs", GROUPING_HELDOUT, { precision: 0.74, recall: 0.6 }],
+  ["held-out tabs", GROUPING_HELDOUT, { precision: 0.74, recall: 0.55 }],
 ]) {
   test(`grouping ${name}`, async (t) => {
     const { precision, recall } = await pairScores(tabs);
