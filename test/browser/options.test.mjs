@@ -27,12 +27,14 @@ function stubBrowserApis() {
         },
       },
     },
+    // Granted permissions are remembered one by one; set sessionStorage "deny" to refuse.
     permissions: {
-      async contains() {
-        return session.getItem("granted") === "1";
+      async contains(p) {
+        return session.getItem(`granted ${JSON.stringify(p)}`) === "1";
       },
-      async request() {
-        session.setItem("granted", "1");
+      async request(p) {
+        if (session.getItem("deny")) return false;
+        session.setItem(`granted ${JSON.stringify(p)}`, "1");
         return true;
       },
     },
@@ -58,6 +60,8 @@ test("settings page", { timeout: 120_000 }, async (t) => {
       range.value = value;
       range.dispatchEvent(new Event("input"));
     }, id, value);
+  // Lets click handlers that await the (stubbed) permissions API finish.
+  const settleClicks = () => page.evaluate(() => new Promise((r) => setTimeout(r, 50)));
   const save = async () => {
     await page.evaluate(() => (document.getElementById("status").textContent = ""));
     await page.click("button[type=submit]");
@@ -88,13 +92,38 @@ test("settings page", { timeout: 120_000 }, async (t) => {
     assert.equal(s.groupingThreshold, 0.3);
   });
 
-  await t.test("categories mode shows categories and the model, defaulting to Tav's", async () => {
+  await t.test("keeping tabs organised is on, and offers to show messages on pages", async () => {
+    assert.equal(await page.$eval("#keepOrganised", (e) => e.checked), true);
+    assert.equal(await page.$eval("#newGroupForLoneTabs", (e) => e.checked), true);
+    assert.match(await text("#toastStatus"), /listed in Tabcat's popup/);
+    // Refused: the button stays, to ask again.
+    await page.evaluate(() => sessionStorage.setItem("deny", "1"));
+    await page.click("#allowToasts");
+    await settleClicks();
+    assert.equal(await hidden("#allowToasts"), false);
+    await page.evaluate(() => sessionStorage.removeItem("deny"));
+    await page.click("#allowToasts");
+    await page.waitForFunction(() => document.getElementById("allowToasts").hidden);
+    assert.match(await text("#toastStatus"), /message with Undo at the bottom/);
+  });
+
+  await t.test("saves the keep-organised settings", async () => {
+    await page.click("#newGroupForLoneTabs");
+    await page.click("#keepOrganised");
+    assert.equal(await hidden("#toastStatus"), true);
+    assert.deepEqual(await save(), { error: false, text: "Saved." });
+    const s = await stored();
+    assert.equal(s.keepOrganised, false);
+    assert.equal(s.newGroupForLoneTabs, false);
+  });
+
+  await t.test("categories mode shows categories and the model, defaulting to Tabcat's", async () => {
     await page.click("input[name=mode][value=categories]");
     assert.equal(await hidden("#autoSettings"), true);
     assert.equal(await hidden("#categorySettings"), false);
     assert.equal(await hidden("#modelSettings"), false);
-    assert.equal(await page.$eval("#provider", (e) => e.value), "tav");
-    assert.equal(await hidden("#tavHint"), false);
+    assert.equal(await page.$eval("#provider", (e) => e.value), "tabcat");
+    assert.equal(await hidden("#tabcatHint"), false);
     assert.equal(await hidden("#layaSettings"), true);
     assert.equal(await hidden("#firefoxSettings"), true);
   });

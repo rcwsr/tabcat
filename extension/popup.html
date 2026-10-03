@@ -7,12 +7,26 @@
       button { width: 100%; padding: 8px; font: inherit; cursor: pointer; }
       #status { margin-top: 10px; white-space: pre-wrap; color: #555; }
       #status.error { color: #c00; }
+      #moves { margin-top: 12px; }
+      #moves h2 { font-size: 12px; font-weight: 600; color: #555; margin: 0 0 4px; }
+      .move { display: flex; gap: 6px; align-items: baseline; margin: 4px 0; }
+      .move span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .move button { width: auto; padding: 2px 8px; }
+      #allowToasts { margin-top: 12px; }
+      #allowToasts p { margin: 0 0 4px; color: #555; }
       #settings { display: block; margin-top: 10px; text-align: right; color: #555; }
     </style>
   </head>
   <body>
-    <button id="organise">Organise this window</button>
+    <button id="organise">Tidy tabs</button>
     <div id="status"></div>
+    <div id="allowToasts" hidden>
+      <p>Tabcat groups tabs as they load. Let it say so, with Undo, on the page you're on?</p>
+      <button>Show moves on pages</button>
+    </div>
+    <div id="moves" hidden>
+      <h2>Recently moved</h2>
+    </div>
     <a href="#" id="settings">Settings</a>
     <script src="popup.js" type="module"></script>
   </body>

@@ -71,7 +71,7 @@ export const CATEGORY_TABS = [
   ["dev","Issue #482 · myname/rustproj · borrow checker error in parser","github.com/myname/rustproj/issues/482"],
   ["dev","tokio - crates.io: Rust Package Registry","crates.io/crates/tokio"],
   ["dev","The Rust Programming Language - Ownership","doc.rust-lang.org/book/ch04-01-what-is-ownership.html"],
-  ["dev","Pull request #12 · rcwsr/tav · Group tabs automatically","github.com/rcwsr/tav/pull/12"],
+  ["dev","Pull request #12 · rcwsr/tabcat · Group tabs automatically","github.com/rcwsr/tabcat/pull/12"],
   ["news","Home - BBC News","www.bbc.co.uk/news"],
   ["news","UK inflation falls to 2.1% in August | The Guardian","www.theguardian.com/business/2026/sep/17/uk-inflation-falls"],
   ["news","Election results live: latest updates - Reuters","www.reuters.com/world/election-results-live"],

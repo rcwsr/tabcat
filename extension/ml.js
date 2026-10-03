@@ -1,6 +1,6 @@
 // On-device models, run inside the extension with transformers.js (vendored by
 // `npm install`, see scripts/vendor.mjs). Firefox's own browser.trial.ml would need
-// about:config switches and only allows one model per extension; Tav needs two.
+// about:config switches and only allows one model per extension; Tabcat needs two.
 // Models download from Hugging Face on first use and are cached by the browser.
 // No tab data is sent anywhere.
 import { env, pipeline } from "./vendor/transformers.min.js";
