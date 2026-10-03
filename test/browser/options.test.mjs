@@ -60,6 +60,8 @@ test("settings page", { timeout: 120_000 }, async (t) => {
       range.value = value;
       range.dispatchEvent(new Event("input"));
     }, id, value);
+  // Lets click handlers that await the (stubbed) permissions API finish.
+  const settleClicks = () => page.evaluate(() => new Promise((r) => setTimeout(r, 50)));
   const save = async () => {
     await page.evaluate(() => (document.getElementById("status").textContent = ""));
     await page.click("button[type=submit]");
@@ -90,20 +92,29 @@ test("settings page", { timeout: 120_000 }, async (t) => {
     assert.equal(s.groupingThreshold, 0.3);
   });
 
-  await t.test("keeping tabs organised asks to show messages on pages", async () => {
-    assert.equal(await page.$eval("#keepOrganised", (e) => e.checked), false);
-    assert.equal(await hidden("#toastStatus"), true);
-    // Refused: moves will be listed in the popup instead, and there's a button to ask again.
-    await page.evaluate(() => sessionStorage.setItem("deny", "1"));
-    await page.click("#keepOrganised");
-    await page.waitForFunction(() => !document.getElementById("allowToasts").hidden);
+  await t.test("keeping tabs organised is on, and offers to show messages on pages", async () => {
+    assert.equal(await page.$eval("#keepOrganised", (e) => e.checked), true);
+    assert.equal(await page.$eval("#newGroupForLoneTabs", (e) => e.checked), true);
     assert.match(await text("#toastStatus"), /listed in Tav's popup/);
+    // Refused: the button stays, to ask again.
+    await page.evaluate(() => sessionStorage.setItem("deny", "1"));
+    await page.click("#allowToasts");
+    await settleClicks();
+    assert.equal(await hidden("#allowToasts"), false);
     await page.evaluate(() => sessionStorage.removeItem("deny"));
     await page.click("#allowToasts");
     await page.waitForFunction(() => document.getElementById("allowToasts").hidden);
     assert.match(await text("#toastStatus"), /message with Undo at the bottom/);
+  });
+
+  await t.test("saves the keep-organised settings", async () => {
+    await page.click("#newGroupForLoneTabs");
+    await page.click("#keepOrganised");
+    assert.equal(await hidden("#toastStatus"), true);
     assert.deepEqual(await save(), { error: false, text: "Saved." });
-    assert.equal((await stored()).keepOrganised, true);
+    const s = await stored();
+    assert.equal(s.keepOrganised, false);
+    assert.equal(s.newGroupForLoneTabs, false);
   });
 
   await t.test("categories mode shows categories and the model, defaulting to Tav's", async () => {

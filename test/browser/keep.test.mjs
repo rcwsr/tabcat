@@ -1,5 +1,5 @@
-// Keeping tabs organised in real Firefox: tabs joining groups as you browse, the toast and
-// its Undo, and tabs you take out of a group staying out.
+// Keeping tabs organised in real Firefox: tabs joining or starting groups as they load, the
+// toast and its Undo, and tabs you take out of a group staying out.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -11,6 +11,14 @@ const DEV = ["Array.prototype.map()", "python - How do I merge", "Issue #482", "
 const NEWS = ["Home - BBC News", "UK inflation falls", "Election results live"].map(tab);
 const RUST = tab("The Rust Programming Language");
 const STORM = tab("Storm warning");
+const CYCLING = [
+  ["Men's Cycling Jerseys | Castelli", "www.castelli-cycling.com/GB/en/men/jerseys"],
+  ["Road Bikes | Canyon GB", "www.canyon.com/en-gb/road-bikes/"],
+];
+const BAKING = [
+  ["Easy sourdough bread recipe - BBC Good Food", "www.bbcgoodfood.com/recipes/sourdough-bread"],
+  ["How to make a sourdough starter | King Arthur Baking", "www.kingarthurbaking.com/recipes/sourdough-starter"],
+];
 // Automatic groups are by topic: this one matches the inflation and election stories.
 const RATES = ["Bank of England holds interest rates as inflation eases - BBC News", "www.bbc.co.uk/news/business-68412345"];
 
@@ -25,7 +33,7 @@ async function waitForLayout(ff, check, what) {
   }
 }
 
-// Long enough for Tav to have acted if it was going to (it waits 0.5–2 s).
+// Long enough for Tav to have acted if it was going to (it waits 2 s after a page loads).
 const settle = () => sleep(3000);
 
 test("keeping tabs organised (automatic mode)", { timeout: 300_000 }, async (t) => {
@@ -35,7 +43,7 @@ test("keeping tabs organised (automatic mode)", { timeout: 300_000 }, async (t) 
   const dev = urls.slice(0, DEV.length);
   const news = urls.slice(DEV.length);
   await ff.organise({
-    settings: { mode: "auto", keepOrganised: true },
+    settings: { mode: "auto" }, // keepOrganised and newGroupForLoneTabs are on by default.
     groups: [
       { title: "Dev", urls: dev },
       { title: "News", urls: news },
@@ -43,28 +51,21 @@ test("keeping tabs organised (automatic mode)", { timeout: 300_000 }, async (t) 
     runs: 0,
   });
   const colours = await ff.command("colours");
-  let rust, front;
+  let rust, page;
+  const toastText = () =>
+    page.waitForFunction(() => document.getElementById("tav-toast")?.shadowRoot.querySelector(".text")?.textContent);
 
-  await t.test("the tab you're on isn't moved", async () => {
+  await t.test("a tab you open joins its group once it loads, with a toast saying so", async () => {
     [rust] = await ff.openTabs([RUST]);
-    await settle();
-    assert.equal((await ff.command("layout"))[rust], null);
-  });
-
-  await t.test("switching away moves it into its group, with a toast saying so", async () => {
-    front = await ff.show(news[0]);
+    page = await ff.show(rust);
     await waitForLayout(ff, (l) => l[rust] === "Dev", "the Rust tab to join Dev");
-    const text = await front.waitForFunction(
-      () => document.getElementById("tav-toast")?.shadowRoot.querySelector(".text")?.textContent,
-    );
-    assert.equal(await text.jsonValue(), "Moved “The Rust Programming Language - Ownership” to Dev");
+    assert.equal(await (await toastText()).jsonValue(), "Moved “The Rust Programming Language - Ownership” to Dev");
   });
 
   await t.test("Undo takes it back out, and it stays out", async () => {
-    await front.evaluate(() => document.getElementById("tav-toast").shadowRoot.querySelector("button").click());
+    await page.evaluate(() => document.getElementById("tav-toast").shadowRoot.querySelector("button").click());
     await waitForLayout(ff, (l) => l[rust] === null, "Undo");
-    await ff.show(rust);
-    await ff.show(news[0]);
+    await page.reload({ waitUntil: "load" });
     await settle();
     assert.equal((await ff.command("layout"))[rust], null);
   });
@@ -76,15 +77,41 @@ test("keeping tabs organised (automatic mode)", { timeout: 300_000 }, async (t) 
 
   await t.test("a tab you take out of a group stays out", async () => {
     await ff.command("ungroup", dev[0]);
-    await ff.show(dev[0]);
-    await ff.show(news[0]);
+    await (await ff.show(dev[0])).reload({ waitUntil: "load" });
     await settle();
     assert.equal((await ff.command("layout"))[dev[0]], null);
   });
 
+  let cycling;
+  await t.test("a tab that matches no group gets a new one", async () => {
+    const [jerseys] = await ff.openTabs([CYCLING[0]]);
+    page = await ff.show(jerseys);
+    const layout = await waitForLayout(ff, (l) => l[jerseys], "the jerseys tab to get a group");
+    cycling = layout[jerseys];
+    assert.ok(!["Dev", "News"].includes(cycling), `went into ${cycling}`);
+    assert.match(await (await toastText()).jsonValue(), new RegExp(`to a new group, ${cycling}$`));
+  });
+
+  await t.test("the next similar tab joins that new group", async () => {
+    const [bikes] = await ff.openTabs([CYCLING[1]], { background: true });
+    await waitForLayout(ff, (l) => l[bikes] === cycling, `the bikes tab to join ${cycling}`);
+  });
+
+  await t.test("with new groups for lone tabs off, a tab waits for a similar one", async () => {
+    await ff.command("set", { newGroupForLoneTabs: false });
+    const [bread] = await ff.openTabs([BAKING[0]], { background: true });
+    await settle();
+    assert.equal((await ff.command("layout"))[bread], null);
+    const [starter] = await ff.openTabs([BAKING[1]]);
+    page = await ff.show(starter);
+    const layout = await waitForLayout(ff, (l) => l[starter] && l[bread] === l[starter], "the baking tabs to be grouped");
+    assert.match(await (await toastText()).jsonValue(), new RegExp(`and 1 similar tab as ${layout[bread]}$`));
+  });
+
   await t.test("the flashing leaves group colours as they were", async () => {
     await sleep(2000); // A blink takes 1.8 s.
-    assert.deepEqual(await ff.command("colours"), colours);
+    const now = await ff.command("colours");
+    assert.deepEqual({ Dev: now.Dev, News: now.News }, colours);
   });
 });
 

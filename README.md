@@ -31,21 +31,23 @@ confidence below which tabs are left alone, and which model sorts into categorie
 
 ## Keeping tabs organised
 
-Turn on **Keep tabs organised** in Settings and Tav puts new tabs into a matching group as
-you browse, without you clicking anything:
+Tav groups tabs as they load, not only when you press **Tidy tabs**. (Turn off **Keep tabs
+organised** in Settings to group only when asked.)
 
-- When a tab finishes loading in the background, or you switch away from a tab, Tav moves
-  it into the group it matches best. In automatic mode that's an existing group it's close
-  to; in categories mode it's its category's group. Tabs that match nothing stay put.
-- It never moves the tab you're looking at, and a tab you take out of a group (or Undo)
-  stays out.
+- A couple of seconds after a tab loads (so its title has settled), Tav puts it in a group:
+  - Automatic mode: the existing group it's closest to. If none is close enough, a new
+    group, together with any similar ungrouped tabs. A tab like nothing else gets a group
+    of its own, unless you turn off **If a tab matches no group, give it a new one**.
+  - Categories mode: its category's group, if the model is confident enough.
+- A tab you take out of a group (or Undo) stays out.
 - The group the tab went into blinks, and a message at the bottom of the page you're on
   says "Moved "…" to Dev" with **Undo**. Firefox doesn't let extensions animate the tab
   bar or draw over the browser window, so these are the closest it allows.
-- The message needs permission to add it to websites, which Tav asks for when you turn
-  this on. Tav only adds the message; it doesn't read pages. Where the message can't
-  appear (Firefox's own pages, PDFs, or without the permission), the Tav button shows a
-  count and the popup lists recent moves with Undo.
+- The message needs permission to add it to websites. Tav asks when you click **Show moves
+  on pages** in the popup (or the button in Settings); Firefox only asks after a click. Tav
+  only adds the message; it doesn't read pages. Until then, and where the message can't
+  appear (Firefox's own pages, PDFs), the Tav button counts the moves and the popup lists
+  them with Undo.
 
 ## How automatic grouping works
 

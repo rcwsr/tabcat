@@ -21,6 +21,7 @@ const layaSettings = document.getElementById("layaSettings");
 const groupingThreshold = document.getElementById("groupingThreshold");
 const groupingThresholdValue = document.getElementById("groupingThresholdValue");
 const keepOrganised = document.getElementById("keepOrganised");
+const newGroupForLoneTabs = document.getElementById("newGroupForLoneTabs");
 const toastStatus = document.getElementById("toastStatus");
 const allowToasts = document.getElementById("allowToasts");
 
@@ -82,6 +83,7 @@ function render(settings) {
   for (const input of modeInputs) input.checked = input.value === settings.mode;
   showMode(settings.mode);
   keepOrganised.checked = settings.keepOrganised;
+  newGroupForLoneTabs.checked = settings.newGroupForLoneTabs;
   groupingThreshold.value = settings.groupingThreshold;
   groupingThresholdValue.textContent = Number(settings.groupingThreshold).toFixed(2);
   // A disabled option can't stay selected, so fall back to the bundled model.
@@ -98,7 +100,9 @@ function render(settings) {
 
 // Returns settings to save, or throws with a message for the user.
 function collect() {
-  const settings = { mode: selectedMode(), keepOrganised: keepOrganised.checked, groupingThreshold: Number(groupingThreshold.value), provider: provider.value };
+  const settings = { mode: selectedMode(), keepOrganised: keepOrganised.checked,
+    newGroupForLoneTabs: newGroupForLoneTabs.checked,
+    groupingThreshold: Number(groupingThreshold.value), provider: provider.value };
   if (provider.value === "laya") {
     let url;
     try {

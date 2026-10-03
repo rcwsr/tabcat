@@ -1,4 +1,9 @@
+import { DEFAULT_SETTINGS } from "./settings.js";
+
 const button = document.getElementById("organise");
+const allowToasts = document.getElementById("allowToasts");
+// Lets Tav show "Moved … Undo" in the page you're on (see toast.js). Same as in options.js.
+const TOAST_PERMISSION = { origins: ["<all_urls>"] };
 const status = document.getElementById("status");
 
 function show(text, isError = false) {
@@ -39,13 +44,27 @@ async function showMoves() {
     const row = document.createElement("div");
     row.className = "move";
     const text = document.createElement("span");
-    text.textContent = `“${move.tabTitle}” → ${move.group}`;
+    text.textContent = move.message;
     text.title = text.textContent;
     const undo = document.createElement("button");
     undo.textContent = "Undo";
     undo.addEventListener("click", async () => {
       await browser.runtime.sendMessage({ type: "undo", moveId: move.id });
       await showMoves();
+
+// keepOrganised is on by default, but Firefox only asks for a permission after a click, so
+// offer it here until it's granted.
+async function offerToasts() {
+  const { keepOrganised } = await browser.storage.local.get({ keepOrganised: DEFAULT_SETTINGS.keepOrganised });
+  allowToasts.hidden = !keepOrganised || (await browser.permissions.contains(TOAST_PERMISSION));
+}
+
+allowToasts.querySelector("button").addEventListener("click", async () => {
+  await browser.permissions.request(TOAST_PERMISSION);
+  await offerToasts();
+});
+
+offerToasts();
     });
     row.append(text, undo);
     list.append(row);
@@ -58,6 +77,20 @@ async function showMoves() {
 }
 
 showMoves();
+
+// keepOrganised is on by default, but Firefox only asks for a permission after a click, so
+// offer it here until it's granted.
+async function offerToasts() {
+  const { keepOrganised } = await browser.storage.local.get({ keepOrganised: DEFAULT_SETTINGS.keepOrganised });
+  allowToasts.hidden = !keepOrganised || (await browser.permissions.contains(TOAST_PERMISSION));
+}
+
+allowToasts.querySelector("button").addEventListener("click", async () => {
+  await browser.permissions.request(TOAST_PERMISSION);
+  await offerToasts();
+});
+
+offerToasts();
 
 document.getElementById("settings").addEventListener("click", (event) => {
   event.preventDefault();
