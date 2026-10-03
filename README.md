@@ -61,8 +61,9 @@ organised** in Settings to group only when asked.)
    few words to go on, like a home page titled just "YouTube", also gets its page's
    description and keywords, read from the page on your machine. That needs the permission
    for websites (the same one as the messages on pages). A bare name scores close to
-   anything, and without the description such a tab can join an unrelated group. For tabs
-   with fuller titles, descriptions made grouping worse, so they aren't used there.
+   anything, so when there's no description to be had, such a tab only goes with tabs from
+   the same site. For tabs with fuller titles, descriptions made grouping worse, so they
+   aren't used there.
 2. Ungrouped tabs join an existing group (yours or Tabcat's) if they're close enough to it.
 3. The rest are clustered (average linkage on cosine similarity). Clusters of two or more
    become new groups; lone tabs are left alone.
