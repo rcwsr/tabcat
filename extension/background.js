@@ -1,5 +1,14 @@
 import { DEFAULT_SETTINGS } from "./settings.js";
-import { averageLinkage, averageSimilarity, nameCandidates, sharedKeywords, tabText, topicPrompt } from "./cluster.js";
+import {
+  averageLinkage,
+  averageSimilarity,
+  isThin,
+  nameCandidates,
+  sharedKeywords,
+  tabText,
+  topicPrompt,
+  withPageInfo,
+} from "./cluster.js";
 import { embed, topic } from "./ml.js";
 import { createProvider } from "./providers.js";
 import { showToast } from "./toast.js";
@@ -90,12 +99,52 @@ function progress(text) {
   browser.runtime.sendMessage({ type: "progress", text }).catch(() => {});
 }
 
+// The page's <meta> description and keywords. Needs the optional permission for websites
+// (the same one as the toast); without it, or on pages scripts can't reach, there's none.
+// Read on the device and only used for the embedding.
+const pageInfoCache = new Map(); // "tabId url" -> { description, keywords } or null
+async function pageInfo(tab) {
+  const key = `${tab.id} ${tab.url}`;
+  if (!pageInfoCache.has(key)) {
+    if (pageInfoCache.size > 500) pageInfoCache.clear();
+    let info = null;
+    try {
+      const [{ result }] = await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          const meta = (selector) => document.querySelector(selector)?.content ?? "";
+          return {
+            description: meta('meta[name="description" i]') || meta('meta[property="og:description"]'),
+            keywords: meta('meta[name="keywords" i]'),
+          };
+        },
+      });
+      info = result;
+    } catch {}
+    pageInfoCache.set(key, info);
+  }
+  return pageInfoCache.get(key);
+}
+
+// What the embedding model sees for each tab. Tabs with thin text (a home page titled
+// with just the site's name) get their page's description added; for other tabs it made
+// grouping worse, so they're left as they are.
+function textsFor(tabs) {
+  return Promise.all(
+    tabs.map(async (t) => {
+      const text = tabText(t.title ?? "", t.url);
+      if (!isThin(text) || t.status !== "complete") return text;
+      return withPageInfo(text, (await pageInfo(t)) ?? {});
+    }),
+  );
+}
+
 // Finds groups by itself: similar tabs (by on-device embeddings) are clustered, ungrouped
 // tabs join an existing group they closely match, and new groups are named from their tabs.
 async function organiseAutomatically(windowId, tabs, settings) {
   if (!tabs.length) return summarise([], 0);
   const threshold = settings.groupingThreshold;
-  const vectors = await embed(tabs.map((t) => tabText(t.title ?? "", t.url)), progress);
+  const vectors = await embed(await textsFor(tabs), progress);
   const existing = await browser.tabGroups.query({ windowId });
 
   // Existing groups (Tabcat's or the user's) keep their tabs and can take in close matches.
@@ -292,7 +341,7 @@ async function placeTab(tabId) {
 }
 
 // Tabs get re-checked every time you switch away from them, so remember their vectors.
-const vectorCache = new Map(); // tabText -> vector
+const vectorCache = new Map(); // textsFor -> vector
 
 async function embedCached(texts) {
   if (vectorCache.size > 1000) vectorCache.clear();
@@ -312,7 +361,7 @@ async function autoTarget(tab, settings) {
   // Loose tabs that can join it: not the one you're on, and not ones you took out of a group.
   const loose = others.filter((t) => !isGrouped(t) && !t.active && !leftAlone.includes(t.id));
   const tabs = [tab, ...grouped, ...loose];
-  const vectors = await embedCached(tabs.map((t) => tabText(t.title ?? "", t.url)));
+  const vectors = await embedCached(await textsFor(tabs));
 
   const byGroup = new Map();
   grouped.forEach((t, i) => byGroup.set(t.groupId, [...(byGroup.get(t.groupId) ?? []), i + 1]));
