@@ -1,13 +1,13 @@
-// "Moved … to Dev  Undo", shown at the bottom of the page you're looking at when Tav
+// "Moved … to Dev  Undo", shown at the bottom of the page you're looking at when Tabcat
 // moves another tab. background.js injects showToast() into that page, so it has to be
 // self-contained: no imports, nothing from outside the function.
 export function showToast(message, moveId) {
   const SHOW_MS = 6000;
-  document.getElementById("tav-toast")?.remove();
+  document.getElementById("tabcat-toast")?.remove();
 
   // A shadow root keeps the page's styles off the toast and the toast's off the page.
   const host = document.createElement("div");
-  host.id = "tav-toast";
+  host.id = "tabcat-toast";
   const root = host.attachShadow({ mode: "open" });
   const style = document.createElement("style");
   style.textContent = `

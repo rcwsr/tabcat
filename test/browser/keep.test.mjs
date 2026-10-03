@@ -33,7 +33,7 @@ async function waitForLayout(ff, check, what) {
   }
 }
 
-// Long enough for Tav to have acted if it was going to (it waits 2 s after a page loads).
+// Long enough for Tabcat to have acted if it was going to (it waits 2 s after a page loads).
 const settle = () => sleep(3000);
 
 test("keeping tabs organised (automatic mode)", { timeout: 300_000 }, async (t) => {
@@ -53,7 +53,7 @@ test("keeping tabs organised (automatic mode)", { timeout: 300_000 }, async (t) 
   const colours = await ff.command("colours");
   let rust, page;
   const toastText = () =>
-    page.waitForFunction(() => document.getElementById("tav-toast")?.shadowRoot.querySelector(".text")?.textContent);
+    page.waitForFunction(() => document.getElementById("tabcat-toast")?.shadowRoot.querySelector(".text")?.textContent);
 
   await t.test("a tab you open joins its group once it loads, with a toast saying so", async () => {
     [rust] = await ff.openTabs([RUST]);
@@ -63,7 +63,7 @@ test("keeping tabs organised (automatic mode)", { timeout: 300_000 }, async (t) 
   });
 
   await t.test("Undo takes it back out, and it stays out", async () => {
-    await page.evaluate(() => document.getElementById("tav-toast").shadowRoot.querySelector("button").click());
+    await page.evaluate(() => document.getElementById("tabcat-toast").shadowRoot.querySelector("button").click());
     await waitForLayout(ff, (l) => l[rust] === null, "Undo");
     await page.reload({ waitUntil: "load" });
     await settle();
@@ -119,7 +119,7 @@ test("keeping tabs organised (categories mode, no permission for toasts)", { tim
   const ff = await launch();
   t.after(() => ff.close());
   await ff.openTabs([NEWS[0]]);
-  await ff.organise({ settings: { mode: "categories", provider: "tav", keepOrganised: true }, runs: 0 });
+  await ff.organise({ settings: { mode: "categories", provider: "tabcat", keepOrganised: true }, runs: 0 });
 
   const [storm] = await ff.openTabs([STORM], { background: true });
   await waitForLayout(ff, (l) => l[storm] === "News", "a News group for the storm tab");

@@ -95,7 +95,7 @@ test("settings page", { timeout: 120_000 }, async (t) => {
   await t.test("keeping tabs organised is on, and offers to show messages on pages", async () => {
     assert.equal(await page.$eval("#keepOrganised", (e) => e.checked), true);
     assert.equal(await page.$eval("#newGroupForLoneTabs", (e) => e.checked), true);
-    assert.match(await text("#toastStatus"), /listed in Tav's popup/);
+    assert.match(await text("#toastStatus"), /listed in Tabcat's popup/);
     // Refused: the button stays, to ask again.
     await page.evaluate(() => sessionStorage.setItem("deny", "1"));
     await page.click("#allowToasts");
@@ -117,13 +117,13 @@ test("settings page", { timeout: 120_000 }, async (t) => {
     assert.equal(s.newGroupForLoneTabs, false);
   });
 
-  await t.test("categories mode shows categories and the model, defaulting to Tav's", async () => {
+  await t.test("categories mode shows categories and the model, defaulting to Tabcat's", async () => {
     await page.click("input[name=mode][value=categories]");
     assert.equal(await hidden("#autoSettings"), true);
     assert.equal(await hidden("#categorySettings"), false);
     assert.equal(await hidden("#modelSettings"), false);
-    assert.equal(await page.$eval("#provider", (e) => e.value), "tav");
-    assert.equal(await hidden("#tavHint"), false);
+    assert.equal(await page.$eval("#provider", (e) => e.value), "tabcat");
+    assert.equal(await hidden("#tabcatHint"), false);
     assert.equal(await hidden("#layaSettings"), true);
     assert.equal(await hidden("#firefoxSettings"), true);
   });

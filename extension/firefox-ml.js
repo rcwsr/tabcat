@@ -1,4 +1,4 @@
-// Firefox's built-in on-device AI (browser.trial.ml). It's experimental: Tav needs the
+// Firefox's built-in on-device AI (browser.trial.ml). It's experimental: Tabcat needs the
 // optional trialML permission, and the user has to set browser.ml.enable and
 // extensions.ml.enabled in about:config. Firefox allows one engine per extension, which
 // is all categories mode needs.
@@ -10,14 +10,14 @@ let ready;
 function engine() {
   ready ??= (async () => {
     if (!browser.trial?.ml) {
-      throw new Error("Tav needs permission to use Firefox's built-in AI. Open Settings to allow it.");
+      throw new Error("Tabcat needs permission to use Firefox's built-in AI. Open Settings to allow it.");
     }
     try {
       await browser.trial.ml.createEngine({
         modelHub: "huggingface",
         taskName: "feature-extraction",
         modelId: "Xenova/all-MiniLM-L6-v2",
-        // The same quantised weights as Tav's bundled copy (also Firefox's default today).
+        // The same quantised weights as Tabcat's bundled copy (also Firefox's default today).
         dtype: "q8",
       });
     } catch (err) {
@@ -36,7 +36,7 @@ function engine() {
   return ready;
 }
 
-// One unit vector per text, from the same model Tav bundles.
+// One unit vector per text, from the same model Tabcat bundles.
 export async function embedWithFirefox(texts) {
   await engine();
   return browser.trial.ml.runEngine({ args: [texts], options: { pooling: "mean", normalize: true } });

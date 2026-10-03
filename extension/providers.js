@@ -83,7 +83,7 @@ export function createProvider(settings) {
       return new LayaProvider(settings.layaUrl);
     case "firefox":
       return new EmbeddingProvider(embedWithFirefox);
-    case "tav":
+    case "tabcat":
     default:
       return new EmbeddingProvider(embed);
   }
