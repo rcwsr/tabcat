@@ -83,12 +83,12 @@ minimum confidence:
 
 | Model | Tabs placed | Placed correctly |
 |---|---|---|
-| Built into Tav | 43 | 32 |
-| Firefox's built-in AI | 46 | 35 |
-| Laya | 31 | 28 |
+| Built into Tav | 43 | 36 |
+| Firefox's built-in AI | 45 | 36 |
+| Laya | 30 | 28 |
 
 Tav's and Firefox's copies of the model run on different runtimes, so a few tabs near the
-cut-off land differently (45 of 48 matched).
+cut-off land differently (46 of 48 matched).
 
 ## Development
 

@@ -22,8 +22,22 @@ test("on-device categories: accuracy and confidence", async (t) => {
   const placedRight = placed.filter((r) => r.choice === r.label).length;
   t.diagnostic(`top-1 ${right}/${results.length}; at ${minConfidence}: placed ${placed.length}, ${placedRight} right`);
 
-  // Measured: 37/48 right; 43 placed, 34 right. Laya scored 36/48; 31 placed, 28 right.
+  // Measured: 37/48 right; 46 placed, 37 right. Laya scored 36/48; 30 placed, 28 right.
   assert.ok(right >= 35, `only ${right}/48 right`);
-  assert.ok(placedRight >= 31, `only ${placedRight} placed correctly`);
+  assert.ok(placedRight >= 34, `only ${placedRight} placed correctly`);
   assert.ok(placedRight / placed.length >= 0.75, `precision ${(placedRight / placed.length).toFixed(2)}`);
+});
+
+// A brand's shop whose title doesn't say "shop". Went to "other" (0.6) until the shopping
+// description mentioned brands and clothing; the page's meta description and keywords
+// didn't help (they pushed it further towards "other").
+test("on-device categories: a clothing brand's shop is shopping", async () => {
+  const { categories } = DEFAULT_SETTINGS;
+  const keys = Object.keys(categories);
+  const vectors = await embed(Object.values(categories));
+  const options = Object.fromEntries(keys.map((k, i) => [k, vectors[i]]));
+  const [tab] = await embed([choiceText({ title: "The World's Finest Cycling Clothing and Accessories | Rapha", url: "rapha.cc/gb/en" })]);
+  const { choice, probabilities } = chooseBySimilarity(tab, options);
+  assert.equal(choice, "shopping");
+  assert.ok(probabilities.shopping >= 0.8, `confidence ${probabilities.shopping.toFixed(2)}`);
 });
