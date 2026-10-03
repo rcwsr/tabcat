@@ -4,9 +4,24 @@ A Firefox extension that sorts your tabs into groups, on your own computer.
 
 By default it finds the groups itself: small AI models running inside the extension
 ([transformers.js](https://github.com/huggingface/transformers.js)) spot related tabs and
-name them. Nothing else to install. Or you can define your own categories and let
-[Laya](https://github.com/receptron/laya) (via layad) sort each tab into one. Either way tab
-data never leaves your machine. The categories provider is swappable for TypeSafe Jev later.
+name them. Nothing else to install. Or you can define your own categories and have each tab
+sorted into one. Either way tab data never leaves your machine.
+
+## Categories mode
+
+Three models can do the sorting (Settings → Model):
+
+- **Built into Tav** (default): the same embedding model automatic mode uses. The tab's
+  title and site are compared with each category's description and the closest wins.
+- **Firefox's built-in AI**: the same model and method, run by Firefox's experimental
+  `browser.trial.ml` instead. Needs a permission (Settings has a button) and
+  `browser.ml.enable` + `extensions.ml.enabled` set to `true` in `about:config`.
+- **[Laya](https://github.com/receptron/laya) via layad**: a typed decision model running
+  as a local service. Its confidence is more reliable, so fewer wrong guesses get through.
+
+On 48 labelled tabs with the default categories, the on-device model got 37 right and Laya
+36. At the default 0.5 minimum confidence, the on-device model placed 43 tabs (34 correctly)
+and Laya 31 (28 correctly).
 
 ## How automatic grouping works
 
@@ -20,8 +35,8 @@ data never leaves your machine. The categories provider is swappable for TypeSaf
    own tab grouping uses), falling back to shared title words or the site.
 
 The models (about 80 MB) download from Hugging Face the first time you organise and are
-cached after that. Firefox's built-in `browser.trial.ml` isn't used because it needs
-about:config switches and only allows one model per extension.
+cached after that. Automatic mode doesn't use Firefox's built-in `browser.trial.ml`: it
+needs about:config switches and only allows one model per extension.
 
 ## Layout
 
@@ -30,7 +45,8 @@ extension/   Firefox MV3 extension
   background.js   organises a window (automatic or by category)
   cluster.js      clustering and naming helpers (no browser APIs)
   ml.js           on-device models via transformers.js
-  providers.js    LayaProvider (local layad) / JevProvider (stub)
+  providers.js    categories-mode models: on-device embeddings / Laya (layad) / Jev (stub)
+  firefox-ml.js   Firefox's built-in AI (browser.trial.ml)
   categories.js   default categories and settings
   vendor/         transformers.js + ONNX runtime, copied in by `npm install` (not committed;
                   included in the built package)
@@ -44,7 +60,7 @@ models themselves download on first use.
 
 1. Install the `.xpi` in Firefox 142+. Release Firefox only installs signed add-ons, so
    this needs a build signed by addons.mozilla.org.
-2. Only for categories mode: install and start [layad](https://github.com/rcwsr/layad):
+2. Only if you want Laya for categories mode: install and start [layad](https://github.com/rcwsr/layad):
 
    ```sh
    brew tap rcwsr/tap && brew install layad && brew services start layad
@@ -69,11 +85,11 @@ Or load it by hand: `about:debugging` → This Firefox → Load Temporary Add-on
 
 Popup → **Settings** (or `about:addons` → Tav → Preferences) to choose automatic grouping
 or your own categories, how strict automatic grouping is, the categories and the minimum
-confidence below which tabs are left alone, and the layad URL.
+confidence below which tabs are left alone, and which model sorts into categories.
 
 ## Testing the model directly
 
-In categories mode Tav sends a request like this for each tab:
+With Laya, Tav sends a request like this for each tab:
 
 ```sh
 curl -s http://127.0.0.1:8918/ai/run -H 'Content-Type: application/json' -d '{
