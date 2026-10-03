@@ -177,6 +177,7 @@ export async function launch({ firefoxML = false, grantAllSites = false } = {}) 
     //   "layout"            { url: group title or null } for every tab
     //   "ungroup", url      takes that tab out of its group, as a user would
     //   "colours"           { group title: colour }
+    //   "set", settings     saves settings, as the settings page would
     //   "badge"             the toolbar button's badge text
     async command(name, arg) {
       const reply = new Promise((resolve) => (replied = resolve));
@@ -243,7 +244,8 @@ function hook(origin) {
           else if (name === "colours") {
             const groups = await browser.tabGroups.query({ windowId: win.id });
             reply = Object.fromEntries(groups.map((g) => [g.title, g.color]));
-          } else if (name === "badge") reply = await browser.action.getBadgeText({ windowId: win.id });
+          } else if (name === "set") await browser.storage.local.set(arg);
+          else if (name === "badge") reply = await browser.action.getBadgeText({ windowId: win.id });
           else if (name === "ungroup") {
             const [tab] = (await browser.tabs.query({ windowId: win.id })).filter((t) => t.url === arg);
             await browser.tabs.ungroup(tab.id);

@@ -1,7 +1,7 @@
-// "Moved … to Dev — Undo", shown at the bottom of the page you're looking at when Tav
+// "Moved … to Dev  Undo", shown at the bottom of the page you're looking at when Tav
 // moves another tab. background.js injects showToast() into that page, so it has to be
 // self-contained: no imports, nothing from outside the function.
-export function showToast(tabTitle, groupTitle, moveId) {
+export function showToast(message, moveId) {
   const SHOW_MS = 6000;
   document.getElementById("tav-toast")?.remove();
 
@@ -32,9 +32,8 @@ export function showToast(tabTitle, groupTitle, moveId) {
   toast.setAttribute("role", "status");
   const text = document.createElement("span");
   text.className = "text";
-  const shortTitle = tabTitle.length > 50 ? `${tabTitle.slice(0, 49)}…` : tabTitle;
-  text.textContent = `Moved “${shortTitle}” to ${groupTitle}`;
-  text.title = `Moved “${tabTitle}” to ${groupTitle}`;
+  // Long titles are cut off with an ellipsis; the tooltip has all of it.
+  text.textContent = text.title = message;
   const undo = document.createElement("button");
   undo.textContent = "Undo";
   toast.append(text, undo);
