@@ -13,13 +13,20 @@ const modeInputs = document.querySelectorAll('input[name="mode"]');
 const autoSettings = document.getElementById("autoSettings");
 const categorySettings = document.getElementById("categorySettings");
 const modelSettings = document.getElementById("modelSettings");
-const tavHint = document.getElementById("tavHint");
+const tabcatHint = document.getElementById("tabcatHint");
 const firefoxSettings = document.getElementById("firefoxSettings");
 const firefoxStatus = document.getElementById("firefoxStatus");
 const allowFirefox = document.getElementById("allowFirefox");
 const layaSettings = document.getElementById("layaSettings");
 const groupingThreshold = document.getElementById("groupingThreshold");
 const groupingThresholdValue = document.getElementById("groupingThresholdValue");
+const keepOrganised = document.getElementById("keepOrganised");
+const newGroupForLoneTabs = document.getElementById("newGroupForLoneTabs");
+const toastStatus = document.getElementById("toastStatus");
+const allowToasts = document.getElementById("allowToasts");
+
+// Lets Tabcat show "Moved … — Undo" in the page you're on. It's only used to add that message.
+const TOAST_PERMISSION = { origins: ["<all_urls>"] };
 
 function show(text, isError = false) {
   status.textContent = text;
@@ -50,7 +57,7 @@ function showMode(mode) {
 
 // Only the chosen model's settings are shown; disabling layad's also stops its URL blocking Save.
 function showProvider(value) {
-  tavHint.hidden = value !== "tav";
+  tabcatHint.hidden = value !== "tabcat";
   firefoxSettings.hidden = value !== "firefox";
   layaUrl.disabled = layaSettings.hidden = value !== "laya";
 }
@@ -58,20 +65,31 @@ function showProvider(value) {
 async function showFirefoxPermission() {
   const granted = await browser.permissions.contains(FIREFOX_ML_PERMISSION);
   firefoxStatus.textContent = granted
-    ? "Tav is allowed to use Firefox's built-in AI."
-    : "Tav needs your permission to use Firefox's built-in AI.";
+    ? "Tabcat is allowed to use Firefox's built-in AI."
+    : "Tabcat needs your permission to use Firefox's built-in AI.";
   allowFirefox.hidden = granted;
+}
+
+async function showToastPermission() {
+  const granted = await browser.permissions.contains(TOAST_PERMISSION);
+  toastStatus.hidden = !keepOrganised.checked;
+  toastStatus.textContent = granted
+    ? "Each move shows a message with Undo at the bottom of the page you're on."
+    : "To show a message with Undo on the page you're on, Tabcat needs permission to add it to websites. Without it, moves are listed in Tabcat's popup instead.";
+  allowToasts.hidden = granted || !keepOrganised.checked;
 }
 
 function render(settings) {
   for (const input of modeInputs) input.checked = input.value === settings.mode;
   showMode(settings.mode);
+  keepOrganised.checked = settings.keepOrganised;
+  newGroupForLoneTabs.checked = settings.newGroupForLoneTabs;
   groupingThreshold.value = settings.groupingThreshold;
   groupingThresholdValue.textContent = Number(settings.groupingThreshold).toFixed(2);
   // A disabled option can't stay selected, so fall back to the bundled model.
   provider.value = provider.querySelector(`option[value="${settings.provider}"]:not([disabled])`)
     ? settings.provider
-    : "tav";
+    : "tabcat";
   showProvider(provider.value);
   layaUrl.value = settings.layaUrl;
   minConfidence.value = settings.minConfidence;
@@ -82,7 +100,9 @@ function render(settings) {
 
 // Returns settings to save, or throws with a message for the user.
 function collect() {
-  const settings = { mode: selectedMode(), groupingThreshold: Number(groupingThreshold.value), provider: provider.value };
+  const settings = { mode: selectedMode(), keepOrganised: keepOrganised.checked,
+    newGroupForLoneTabs: newGroupForLoneTabs.checked,
+    groupingThreshold: Number(groupingThreshold.value), provider: provider.value };
   if (provider.value === "laya") {
     let url;
     try {
@@ -126,6 +146,19 @@ allowFirefox.addEventListener("click", async () => {
   // Must run straight from the click: Firefox only shows permission prompts for user actions.
   await browser.permissions.request(FIREFOX_ML_PERMISSION);
   await showFirefoxPermission();
+await showToastPermission();
+});
+
+keepOrganised.addEventListener("change", async () => {
+  // Ask before awaiting anything else, while this still counts as a user action. If it's
+  // already granted, Firefox doesn't ask again.
+  if (keepOrganised.checked) await browser.permissions.request(TOAST_PERMISSION);
+  await showToastPermission();
+});
+
+allowToasts.addEventListener("click", async () => {
+  await browser.permissions.request(TOAST_PERMISSION);
+  await showToastPermission();
 });
 
 minConfidence.addEventListener("input", () => {
@@ -138,6 +171,7 @@ document.getElementById("addCategory").addEventListener("click", () => {
 
 document.getElementById("reset").addEventListener("click", () => {
   render(DEFAULT_SETTINGS);
+  showToastPermission();
   show("Defaults restored. Save to keep them.");
 });
 
@@ -153,3 +187,4 @@ form.addEventListener("submit", async (event) => {
 
 render(await browser.storage.local.get(DEFAULT_SETTINGS));
 await showFirefoxPermission();
+await showToastPermission();

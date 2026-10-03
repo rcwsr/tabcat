@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Tav settings</title>
+    <title>Tabcat settings</title>
     <style>
       body { font: 14px system-ui, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
       fieldset { border: 1px solid #ccc; border-radius: 6px; margin-bottom: 16px; padding: 12px 16px; }
@@ -21,7 +21,7 @@
     </style>
   </head>
   <body>
-    <h1>Tav settings</h1>
+    <h1>Tabcat settings</h1>
     <form id="settings">
       <fieldset>
         <legend>How to group</legend>
@@ -29,9 +29,19 @@
         <label class="choice"><input type="radio" name="mode" value="categories" />Into my categories (below)</label>
       </fieldset>
 
+      <fieldset>
+        <legend>Keep tabs organised</legend>
+        <label class="choice"><input type="checkbox" id="keepOrganised" />Put new tabs into a matching group as I browse</label>
+        <p class="hint">A moment after a tab loads, Tabcat moves it into the group it matches best. It won't put a tab back in a group you took it out of. Turn this off to group only when you press Tidy tabs.</p>
+        <label class="choice"><input type="checkbox" id="newGroupForLoneTabs" />If a tab matches no group, give it a new one (automatic grouping)</label>
+        <p class="hint">Similar ungrouped tabs go into the new group with it. Turn this off to leave a tab alone until there's a group or another tab like it.</p>
+        <p id="toastStatus" class="hint"></p>
+        <button type="button" id="allowToasts" hidden>Allow messages on pages</button>
+      </fieldset>
+
       <fieldset id="autoSettings">
         <legend>Automatic grouping</legend>
-        <p class="hint">Tav runs two small AI models on this computer: one to find related tabs, one to suggest names. The first run downloads them (about 80 MB) from Hugging Face; after that they're cached. Tab titles never leave this computer.</p>
+        <p class="hint">Tabcat runs two small AI models on this computer: one to find related tabs, one to suggest names. The first run downloads them (about 80 MB) from Hugging Face; after that they're cached. Tab titles never leave this computer.</p>
         <label for="groupingThreshold">Grouping strictness: <output id="groupingThresholdValue"></output></label>
         <input id="groupingThreshold" type="range" min="0.15" max="0.4" step="0.01" />
         <p class="hint">Higher keeps groups tighter and leaves more tabs alone. Lower groups more loosely.</p>
@@ -41,12 +51,12 @@
         <legend>Model</legend>
         <label for="provider">What sorts tabs into categories</label>
         <select id="provider">
-          <option value="tav">Built into Tav (on this computer)</option>
+          <option value="tabcat">Built into Tabcat (on this computer)</option>
           <option value="firefox">Firefox's built-in AI (on this computer, experimental)</option>
           <option value="laya">Laya via layad (on this computer)</option>
           <option value="jev" disabled>TypeSafe Jev (not available yet)</option>
         </select>
-        <p id="tavHint" class="hint">Uses the model Tav already downloads for automatic grouping. Nothing to set up.</p>
+        <p id="tabcatHint" class="hint">Uses the model Tabcat already downloads for automatic grouping. Nothing to set up.</p>
         <div id="firefoxSettings">
           <p id="firefoxStatus" class="hint"></p>
           <button type="button" id="allowFirefox" hidden>Allow Firefox's built-in AI</button>
