@@ -22,7 +22,7 @@ test("on-device categories: accuracy and confidence", async (t) => {
   const placedRight = placed.filter((r) => r.choice === r.label).length;
   t.diagnostic(`top-1 ${right}/${results.length}; at ${minConfidence}: placed ${placed.length}, ${placedRight} right`);
 
-  // Measured: 37/48 right; 46 placed, 37 right. Laya scored 36/48; 30 placed, 28 right.
+  // Measured: 39/48 right; 43 placed, 36 right. Laya scored 36/48; 30 placed, 28 right.
   assert.ok(right >= 35, `only ${right}/48 right`);
   assert.ok(placedRight >= 34, `only ${placedRight} placed correctly`);
   assert.ok(placedRight / placed.length >= 0.75, `precision ${(placedRight / placed.length).toFixed(2)}`);

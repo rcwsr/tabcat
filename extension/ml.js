@@ -35,10 +35,17 @@ function load(name, onProgress) {
   return loaded[name];
 }
 
-// One unit vector per text.
+// One unit vector per text. Texts go through the model one at a time: a batch pads every
+// text to the longest, which makes a tab's vector depend on the tabs batched with it, and
+// its memory grows with the square of that length (a window of tabs at once, some with page
+// descriptions, ran the model out of memory).
 export async function embed(texts, onProgress) {
   const model = await load("embedding", onProgress);
-  return (await model(texts, { pooling: "mean", normalize: true })).tolist();
+  const vectors = [];
+  for (const text of texts) {
+    vectors.push(...(await model([text], { pooling: "mean", normalize: true })).tolist());
+  }
+  return vectors;
 }
 
 // A short topic name for a prompt built by topicPrompt(), or "" if the model has none.
