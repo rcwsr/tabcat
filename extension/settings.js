@@ -17,6 +17,8 @@ export const DEFAULT_SETTINGS = {
   // Auto mode: how similar tabs must be (average cosine similarity) to share a group.
   // 0.25 was the best precision/recall balance on two labelled sets of 24 tabs.
   groupingThreshold: 0.25,
+  // Put new tabs into a matching group as you browse (and offer Undo), not only when asked.
+  keepOrganised: false,
   // Categories mode: "tav" (bundled on-device model), "firefox" (Firefox's built-in AI) or "laya".
   provider: "tav",
   layaUrl: "http://127.0.0.1:8918",

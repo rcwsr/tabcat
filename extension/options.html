@@ -29,6 +29,14 @@
         <label class="choice"><input type="radio" name="mode" value="categories" />Into my categories (below)</label>
       </fieldset>
 
+      <fieldset>
+        <legend>Keep tabs organised</legend>
+        <label class="choice"><input type="checkbox" id="keepOrganised" />Put new tabs into a matching group as I browse</label>
+        <p class="hint">When a tab finishes loading in the background, or you switch away from it, Tav moves it into the group it matches best. It never moves the tab you're looking at, and won't put a tab back in a group you took it out of.</p>
+        <p id="toastStatus" class="hint"></p>
+        <button type="button" id="allowToasts" hidden>Allow messages on pages</button>
+      </fieldset>
+
       <fieldset id="autoSettings">
         <legend>Automatic grouping</legend>
         <p class="hint">Tav runs two small AI models on this computer: one to find related tabs, one to suggest names. The first run downloads them (about 80 MB) from Hugging Face; after that they're cached. Tab titles never leave this computer.</p>
