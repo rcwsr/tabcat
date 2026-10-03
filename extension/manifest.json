@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Tav",
+  "name": "Tabcat",
   "version": "0.1.0",
   "description": "Sorts your tabs into groups automatically, on your computer.",
   "browser_specific_settings": {
     "gecko": {
-      "id": "tav@cwsr.dev",
+      "id": "tabcat@cwsr.dev",
       "strict_min_version": "142.0",
       "data_collection_permissions": {
         "required": [
@@ -30,7 +30,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Tav",
+    "default_title": "Tabcat",
     "default_popup": "popup.html"
   },
   "options_ui": {
