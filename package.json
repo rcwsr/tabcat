@@ -1,5 +1,5 @@
 {
-  "name": "tav",
+  "name": "tabcat",
   "version": "0.1.0",
   "private": true,
   "description": "Firefox extension that sorts open tabs into tab groups",

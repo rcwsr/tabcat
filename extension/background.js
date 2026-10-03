@@ -98,7 +98,7 @@ async function organiseAutomatically(windowId, tabs, settings) {
   const vectors = await embed(tabs.map((t) => tabText(t.title ?? "", t.url)), progress);
   const existing = await browser.tabGroups.query({ windowId });
 
-  // Existing groups (Tav's or the user's) keep their tabs and can take in close matches.
+  // Existing groups (Tabcat's or the user's) keep their tabs and can take in close matches.
   const members = new Map();
   tabs.forEach((t, i) => isGrouped(t) && members.set(t.groupId, [...(members.get(t.groupId) ?? []), i]));
   const joins = new Map();
@@ -197,7 +197,7 @@ function schedule(tabId) {
     tabId,
     setTimeout(() => {
       pending.delete(tabId);
-      placeTab(tabId).catch((err) => console.warn("Tav couldn't place a tab:", err));
+      placeTab(tabId).catch((err) => console.warn("Tabcat couldn't place a tab:", err));
     }, SETTLE_MS),
   );
 }

@@ -22,8 +22,8 @@ export const DEFAULT_SETTINGS = {
   // With keepOrganised in automatic mode: a tab that matches no group and no other loose
   // tab gets a group of its own instead of being left alone.
   newGroupForLoneTabs: true,
-  // Categories mode: "tav" (bundled on-device model), "firefox" (Firefox's built-in AI) or "laya".
-  provider: "tav",
+  // Categories mode: "tabcat" (bundled on-device model), "firefox" (Firefox's built-in AI) or "laya".
+  provider: "tabcat",
   layaUrl: "http://127.0.0.1:8918",
   jevApiKey: "",
   // Categories mode: tabs below this confidence are left where they are.
