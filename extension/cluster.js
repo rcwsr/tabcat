@@ -72,10 +72,10 @@ function words(text) {
     .filter((w) => w.length > 2 && !STOP_WORDS.has(w) && !/^\d+$/.test(w));
 }
 
-// Words that appear in at least two of the titles, most common first.
+// Words that appear in at least two different titles, most common first.
 export function sharedKeywords(titles, limit = 3) {
   const count = new Map();
-  for (const t of titles) for (const w of new Set(words(t))) count.set(w, (count.get(w) ?? 0) + 1);
+  for (const t of new Set(titles)) for (const w of new Set(words(t))) count.set(w, (count.get(w) ?? 0) + 1);
   return [...count]
     .filter(([, c]) => c >= 2)
     .sort((a, b) => b[1] - a[1])
