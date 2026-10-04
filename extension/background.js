@@ -99,8 +99,8 @@ function progress(text) {
   browser.runtime.sendMessage({ type: "progress", text }).catch(() => {});
 }
 
-// The page's <meta> description and keywords. Needs the optional permission for websites
-// (the same one as the toast); without it, or on pages scripts can't reach, there's none.
+// The page's <meta> description and keywords. Needs the permission for websites (the same
+// one as the toast); if it's been turned off, or on pages scripts can't reach, there's none.
 // Read on the device and only used for the embedding.
 const pageInfoCache = new Map(); // "tabId url" -> { description, keywords }
 async function pageInfo(tab) {
@@ -462,8 +462,8 @@ async function flash(groupId) {
   } catch {} // The group was closed mid-blink.
 }
 
-// Shows the toast in the page you're looking at. Returns false if it can't: without the
-// "all websites" permission, or on pages extensions can't touch (about:, PDFs, AMO).
+// Shows the toast in the page you're looking at. Returns false if it can't: with the
+// "all websites" permission turned off, or on pages extensions can't touch (about:, PDFs, AMO).
 async function announce(move) {
   const [active] = await browser.tabs.query({ windowId: move.windowId, active: true });
   try {

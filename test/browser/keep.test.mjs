@@ -37,7 +37,7 @@ async function waitForLayout(ff, check, what) {
 const settle = () => sleep(3000);
 
 test("keeping tabs organised (automatic mode)", { timeout: 300_000 }, async (t) => {
-  const ff = await launch({ grantAllSites: true });
+  const ff = await launch();
   t.after(() => ff.close());
   const urls = await ff.openTabs([...DEV, ...NEWS]);
   const dev = urls.slice(0, DEV.length);
@@ -115,11 +115,14 @@ test("keeping tabs organised (automatic mode)", { timeout: 300_000 }, async (t) 
   });
 });
 
-test("keeping tabs organised (categories mode, no permission for toasts)", { timeout: 300_000 }, async (t) => {
+test("keeping tabs organised (categories mode, website access turned off)", { timeout: 300_000 }, async (t) => {
   const ff = await launch();
   t.after(() => ff.close());
   await ff.openTabs([NEWS[0]]);
   await ff.organise({ settings: { mode: "categories", provider: "tabcat", keepOrganised: true }, runs: 0 });
+  // Website access is granted at install; here it's been turned off in about:addons.
+  assert.equal(await ff.command("allSites"), true);
+  assert.equal(await ff.command("allSites", false), false);
 
   const [storm] = await ff.openTabs([STORM], { background: true });
   await waitForLayout(ff, (l) => l[storm] === "News", "a News group for the storm tab");
@@ -144,7 +147,7 @@ const YOUTUBE_META = {
 };
 
 test("a home page with a bare title isn't pulled into an unrelated group", { timeout: 300_000 }, async (t) => {
-  const ff = await launch({ grantAllSites: true });
+  const ff = await launch();
   t.after(() => ff.close());
   const bighelp = await ff.openTabs(BIGHELP);
   await ff.organise({ settings: { mode: "auto" }, groups: [{ title: "Bighelp", urls: bighelp }], runs: 0 });

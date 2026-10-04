@@ -48,19 +48,19 @@ organised** in Settings to group only when asked.)
 - The group the tab went into blinks, and a message at the bottom of the page you're on
   says "Moved "…" to Dev" with **Undo**. Firefox doesn't let extensions animate the tab
   bar or draw over the browser window, so these are the closest it allows.
-- The message needs permission to add it to websites. Tabcat asks when you click **Show moves
-  on pages** in the popup (or the button in Settings); Firefox only asks after a click. Tabcat
-  only adds the message; it doesn't read pages. Until then, and where the message can't
-  appear (Firefox's own pages, PDFs), the Tabcat button counts the moves and the popup lists
-  them with Undo.
+- The message needs Tabcat's access to websites, which Firefox grants when you install it.
+  Tabcat uses it to add the message, and to read the description of pages whose titles say
+  almost nothing (see below); nothing it reads leaves your machine. If you turn the access
+  off (about:addons → Tabcat → Permissions), and wherever the message can't appear (Firefox's
+  own pages, PDFs), the Tabcat button counts the moves and the popup lists them with Undo.
 
 ## How automatic grouping works
 
 1. Each tab's title and URL path are turned into a vector by
    [all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2). A tab with only a
    few words to go on, like a home page titled just "YouTube", also gets its page's
-   description and keywords, read from the page on your machine. That needs the permission
-   for websites (the same one as the messages on pages). A bare name scores close to
+   description and keywords, read from the page on your machine (using the same access to
+   websites as the messages on pages). A bare name scores close to
    anything, so when there's no description to be had, such a tab only goes with tabs from
    the same site. For tabs with fuller titles, descriptions made grouping worse, so they
    aren't used there.
