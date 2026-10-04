@@ -108,10 +108,10 @@ function progress(text) {
   browser.runtime.sendMessage({ type: "progress", text }).catch(() => {});
 }
 
-// The page's <meta> description and keywords. Needs the permission for websites (the same
-// one as the toast); if it's been turned off, or on pages scripts can't reach, there's none.
-// Read on the device and only used for the embedding.
-const pageInfoCache = new Map(); // "tabId url" -> { description, keywords }
+// The page's <meta> description, keywords and site name. Needs the permission for websites
+// (the same one as the toast); if it's been turned off, or on pages scripts can't reach,
+// there's none. Used for grouping thin tabs and for naming groups.
+const pageInfoCache = new Map(); // "tabId url" -> { description, keywords, site }
 async function pageInfo(tab) {
   const key = `${tab.id} ${tab.url}`;
   if (!pageInfoCache.has(key)) {
@@ -124,6 +124,7 @@ async function pageInfo(tab) {
           return {
             description: meta('meta[name="description" i]') || meta('meta[property="og:description"]'),
             keywords: meta('meta[name="keywords" i]'),
+            site: meta('meta[property="og:site_name"]') || meta('meta[name="application-name" i]'),
           };
         },
       });
@@ -227,7 +228,7 @@ async function nameGroup(tabs, taken, settings, onProgress) {
   const { lines, keywords } = namingInputs(pages);
   const onePage = lines.length === 1;
   let base;
-  if (onePage && !settings.nameWithAi) base = siteName(tabs[0].title ?? "", tabs[0].url);
+  if (onePage && !settings.nameWithAi) base = siteName(pages[0].site, tabs[0].url);
   else {
     const suggestion = settings.nameWithAi
       ? parseName(await chat(settings, namingMessages(pages)))
