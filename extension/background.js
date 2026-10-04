@@ -64,10 +64,12 @@ async function applyGroups(windowId, groups) {
   }
 }
 
-function summarise(groups, skipped) {
+// skippedBecause: why the skipped tabs weren't grouped, for the popup.
+function summarise(groups, skipped, skippedBecause = "nothing similar") {
   return {
     organised: groups.reduce((n, g) => n + g.tabIds.length, 0),
     skipped,
+    skippedBecause,
     groups: Object.fromEntries(groups.map((g) => [g.title, g.tabIds.length])),
   };
 }
@@ -91,7 +93,7 @@ async function organiseByCategory(windowId, tabs, settings) {
   }
   const groups = Object.entries(buckets).map(([key, tabIds]) => ({ title: titleFor(key), tabIds }));
   await applyGroups(windowId, groups);
-  return summarise(groups, skipped);
+  return summarise(groups, skipped, "no category fits");
 }
 
 // Tells the popup, if it's open, what's taking so long.
@@ -162,7 +164,7 @@ async function organiseAutomatically(windowId, tabs, settings) {
   tabs.forEach((t, i) => isGrouped(t) && members.set(t.groupId, [...(members.get(t.groupId) ?? []), i]));
   const joins = new Map();
   const loose = [];
-  let thin = 0;
+  const thin = [];
   tabs.forEach((tab, i) => {
     if (isGrouped(tab)) return;
     let best = null;
@@ -174,7 +176,7 @@ async function organiseAutomatically(windowId, tabs, settings) {
     if (best) joins.set(best.groupId, [...(joins.get(best.groupId) ?? []), tab.id]);
     // A thin tab is only clustered by site, which joining a group covers well enough.
     else if (!isThin(texts[i])) loose.push(i);
-    else thin++;
+    else thin.push(i);
   });
   const groups = [...joins].map(([groupId, tabIds]) => ({
     groupId,
@@ -182,15 +184,20 @@ async function organiseAutomatically(windowId, tabs, settings) {
     tabIds,
   }));
 
-  const clusters = averageLinkage(vectors, loose, threshold).filter((c) => c.length >= 2);
+  const clusters = [
+    ...averageLinkage(vectors, loose, threshold),
+    ...thin.map((i) => [i]),
+  ];
+  // A tab like nothing else gets a group of its own, as when it loads, unless that's off.
+  const made = clusters.filter((c) => c.length >= 2 || settings.newGroupForLoneTabs);
   const taken = new Set(existing.map((g) => g.title));
-  for (const ix of clusters) {
+  for (const ix of made) {
     const members = ix.map((i) => tabs[i]);
     groups.push({ title: await nameGroup(members, taken, progress), tabIds: members.map((t) => t.id) });
   }
 
   await applyGroups(windowId, groups);
-  const skipped = thin + loose.length - clusters.reduce((n, c) => n + c.length, 0);
+  const skipped = clusters.length - made.length;
   return summarise(groups, skipped);
 }
 
