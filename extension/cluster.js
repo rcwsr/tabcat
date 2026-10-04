@@ -83,6 +83,22 @@ export function sharedKeywords(titles, limit = 3) {
     .map(([w]) => w);
 }
 
+// What a group's name is made from, for tabs given as { title, description, keywords }:
+// each distinct title once (copies of one page would make every word "shared"), with its
+// page's description, and the words the titles share followed by the pages' own keywords.
+export function namingInputs(tabs) {
+  const lines = new Map(); // title -> line
+  for (const { title = "", description = "" } of tabs) {
+    const d = description.trim().slice(0, 200);
+    if (!lines.has(title) || d) lines.set(title, d ? `${title} — ${d}` : title);
+  }
+  const own = tabs.flatMap(({ keywords = "" }) =>
+    keywords.split(",").map((k) => k.trim().toLowerCase()).filter(Boolean).slice(0, 3),
+  );
+  const keywords = [...new Set([...sharedKeywords([...lines.keys()]), ...own])].slice(0, 6);
+  return { lines: [...lines.values()], keywords };
+}
+
 // The prompt format Firefox's own smart tab groups use with Mozilla/smart-tab-topic.
 export function topicPrompt(titles, keywords) {
   return `Topic from keywords: ${keywords.join(", ")}. titles: \n${titles.join(" \n")}`;
