@@ -76,7 +76,11 @@ organised** in Settings to group only when asked.)
    own tab grouping uses), or from your [AI service](#ai-service) if it's set to name
    groups. Either way it's given each distinct title once, with its page's description,
    plus the words the titles share and the pages' own keywords. If there's no name, it falls
-   back to those words or the site.
+   back to those words or the site. A group of one page (or copies of it) is named after
+   the page's site instead ("Screwfix", "Gmail"), since the topic model names single pages
+   badly. When a different page joins a group named from one page, the group is named again
+   from all its tabs, unless you've renamed it or turned off **Rename a group named after
+   one page when a different page joins it**.
 
 The models (about 80 MB) download from Hugging Face the first time you organise and are
 cached after that. Automatic mode doesn't use Firefox's built-in `browser.trial.ml`: it
