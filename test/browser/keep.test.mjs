@@ -83,18 +83,22 @@ test("keeping tabs organised (automatic mode)", { timeout: 300_000 }, async (t) 
   });
 
   let cycling;
-  await t.test("a tab that matches no group gets a new one", async () => {
-    const [jerseys] = await ff.openTabs([CYCLING[0]]);
+  let jerseys;
+  await t.test("a tab that matches no group gets a new one, named after its site", async () => {
+    [jerseys] = await ff.openTabs([CYCLING[0]]);
     page = await ff.show(jerseys);
     const layout = await waitForLayout(ff, (l) => l[jerseys], "the jerseys tab to get a group");
-    cycling = layout[jerseys];
-    assert.ok(!["Dev", "News"].includes(cycling), `went into ${cycling}`);
-    assert.match(await (await toastText()).jsonValue(), new RegExp(`to a new group, ${cycling}$`));
+    assert.equal(layout[jerseys], "Castelli");
+    assert.match(await (await toastText()).jsonValue(), /to a new group, Castelli$/);
   });
 
-  await t.test("the next similar tab joins that new group", async () => {
+  await t.test("the next similar tab joins that new group, which is named again", async () => {
     const [bikes] = await ff.openTabs([CYCLING[1]], { background: true });
-    await waitForLayout(ff, (l) => l[bikes] === cycling, `the bikes tab to join ${cycling}`);
+    // The new name comes a moment after the move.
+    const joined = (l) => l[bikes] && l[bikes] === l[jerseys] && l[bikes] !== "Castelli";
+    cycling = (await waitForLayout(ff, joined, "the bikes tab to join the jerseys tab, and a new name"))[bikes];
+    t.diagnostic(cycling);
+    assert.ok(!["Dev", "News"].includes(cycling), `went into ${cycling}`);
   });
 
   await t.test("with new groups for lone tabs off, a tab waits for a similar one", async () => {
