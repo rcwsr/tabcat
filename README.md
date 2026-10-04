@@ -1,204 +1,138 @@
 # Tabcat
 
-A Firefox extension that sorts your tabs into groups, on your own computer.
+A Firefox extension that puts your tabs into tab groups and names them. It runs on your
+computer: tab data stays there unless you connect your own [AI service](#ai-service).
 
-By default it finds the groups itself: small AI models running inside the extension
-([transformers.js](https://github.com/huggingface/transformers.js)) spot related tabs and
-name them. Nothing else to install. Or you can define your own categories and have each tab
-sorted into one. Either way tab data never leaves your machine, unless you choose to use an
-[AI service](#ai-service) of your own.
+## What it does
 
-## Installing
+- **Groups tabs as you browse.** A couple of seconds after a tab loads, Tabcat puts it in the
+  group it fits best, or starts a new group with similar tabs. A message at the bottom of the
+  page says where it went, with **Undo**.
+- **Tidy tabs** (toolbar button) groups every tab that isn't in a group yet. Your own groups
+  stay as they are, but can take in matching tabs.
+- **Reorganise** breaks up every group in the window and sorts all the tabs again.
+  **Undo reorganise** puts the old groups back.
+- A tab you take out of a group stays out.
 
-Tabcat ships as a single `.xpi` with everything it needs, including the model runtime. The
-models themselves download on first use.
+## Two ways to group
 
-1. Install the `.xpi` in Firefox 142+. Release Firefox only installs signed add-ons, so
-   this needs a build signed by addons.mozilla.org.
-2. Only if you want Laya for categories mode: install and start [layad](https://github.com/rcwsr/layad):
+**Automatically** (the default). Tabcat finds related tabs and names the groups itself, using
+two small models that run inside the extension:
+[all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2) to find tabs that are alike,
+and [smart-tab-topic](https://huggingface.co/Mozilla/smart-tab-topic) (the one Firefox's own
+tab grouping uses) to name them. They download from Hugging Face the first time (about 80 MB).
 
-   ```sh
-   brew tap rcwsr/tap && brew install layad && brew services start layad
-   layad status
-   ```
+- It goes by each tab's title and address. If a title says almost nothing (a home page titled
+  "YouTube"), it also reads the page's description.
+- A group made from a single page is named after its site, for example "Gmail". When a
+  different page joins it, the group gets a new name based on all its tabs. It keeps the
+  old name if you've renamed the group yourself.
 
-3. Click the Tabcat toolbar button → **Tidy tabs**.
+**Into your categories.** You list categories (Work, News, Shopping…) with a sentence
+describing each, and each tab goes into the one it fits. A tab that doesn't clearly fit
+stays put. Groups you made yourself are left alone. You can choose what does the sorting:
 
-**Tidy tabs** sorts the tabs that aren't in a group and leaves your own groups as they are.
-**Reorganise** starts over: it breaks up every group in the window, yours included, and
-sorts every tab again. **Undo reorganise** puts the old groups back (names, colours, order),
-until you next tidy or reorganise that window.
+- **Built into Tabcat** (default): the same model as above.
+- **Firefox's built-in AI**: the same model, run by Firefox. This is experimental: it needs
+  a permission (Settings has a button) and `browser.ml.enable` and `extensions.ml.enabled`
+  set to `true` in `about:config`.
+- **Laya**: a local decision model. You need to run [layad](https://github.com/rcwsr/layad)
+  (`brew tap rcwsr/tap && brew install layad && brew services start layad`). It places
+  fewer tabs, but it gets more of them right.
+- **My AI service**: see below.
 
-## Settings
-
-Popup → **Settings** (or `about:addons` → Tabcat → Preferences) to choose automatic grouping
-or your own categories, how strict automatic grouping is, the categories and the minimum
-confidence below which tabs are left alone, which model sorts into categories, and an
-optional [AI service](#ai-service).
-
-## Keeping tabs organised
-
-Tabcat groups tabs as they load, not only when you press **Tidy tabs**. (Turn off **Keep tabs
-organised** in Settings to group only when asked.)
-
-- A couple of seconds after a tab loads (so its title has settled), Tabcat puts it in a group:
-  - Automatic mode: the existing group it's closest to. If none is close enough, a new
-    group, together with any similar ungrouped tabs. A tab like nothing else gets a group
-    of its own, unless you turn off **If a tab matches no group, give it a new one**.
-  - Categories mode: its category's group, if the model is confident enough.
-- A tab you take out of a group (or Undo) stays out.
-- The group the tab went into blinks, and a message at the bottom of the page you're on
-  says "Moved "…" to Dev" with **Undo**. Firefox doesn't let extensions animate the tab
-  bar or draw over the browser window, so these are the closest it allows.
-- The message needs Tabcat's access to websites, which Firefox grants when you install it.
-  Tabcat uses it to add the message, and to read the description of pages whose titles say
-  almost nothing (see below); nothing it reads leaves your machine. If you turn the access
-  off (about:addons → Tabcat → Permissions), and wherever the message can't appear (Firefox's
-  own pages, PDFs), the Tabcat button counts the moves and the popup lists them with Undo.
-
-## How automatic grouping works
-
-1. Each tab's title and URL path are turned into a vector by
-   [all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2). A tab with only a
-   few words to go on, like a home page titled just "YouTube", also gets its page's
-   description and keywords, read from the page on your machine (using the same access to
-   websites as the messages on pages). A bare name scores close to
-   anything, so when there's no description to be had, such a tab only goes with tabs from
-   the same site. For tabs with fuller titles, descriptions made grouping worse, so they
-   aren't used there.
-2. Ungrouped tabs join an existing group (yours or Tabcat's) if they're close enough to it.
-3. The rest are clustered (average linkage on cosine similarity). Clusters of two or more
-   become new groups. A tab like no other gets a group of its own, unless you turn off
-   **If a tab matches no group, give it a new one**; then it's left out, and the popup
-   counts it as "Not grouped (nothing similar)".
-4. Each new group gets a name from
-   [smart-tab-topic](https://huggingface.co/Mozilla/smart-tab-topic) (the model Firefox's
-   own tab grouping uses), or from your [AI service](#ai-service) if it's set to name
-   groups. Either way it's given each distinct title once, with its page's description,
-   plus the words the titles share and the pages' own keywords. If there's no name, it falls
-   back to those words or the site. A group of one page (or copies of it) is named after
-   its site instead, since the topic model names single pages badly: the name the site
-   gives itself (`og:site_name`, or a web app's `application-name`), else its hostname
-   ("OpenRouter", "screwfix.com"). When a different page joins a group named from one page, the group is named again
-   from all its tabs, unless you've renamed it or turned off **Rename a group named after
-   one page when a different page joins it**.
-
-The models (about 80 MB) download from Hugging Face the first time you organise and are
-cached after that. Automatic mode doesn't use Firefox's built-in `browser.trial.ml`: it
-needs about:config switches and only allows one model per extension.
-
-## Categories mode
-
-Each tab is sorted into the category it matches best, or left alone if no category is a
-confident match. Tabs in groups you made yourself (any group not named after a category)
-stay where they are.
-
-Three models can do the sorting (Settings → Model):
-
-- **Built into Tabcat** (default): the same embedding model automatic mode uses. The tab's
-  title and site are compared with each category's description and the closest wins.
-- **Firefox's built-in AI**: the same model and method, run by Firefox's experimental
-  `browser.trial.ml` instead. Needs a permission (Settings has a button) and
-  `browser.ml.enable` + `extensions.ml.enabled` set to `true` in `about:config`.
-- **[Laya](https://github.com/receptron/laya) via layad**: a typed decision model running
-  as a local service. Its confidence is more reliable, so fewer wrong guesses get through.
-
-Measured in Firefox on 48 labelled tabs with the default categories, at the default 0.5
-minimum confidence:
+How each one did on 48 test tabs with the default categories:
 
 | Model | Tabs placed | Placed correctly |
 |---|---|---|
 | Built into Tabcat | 43 | 36 |
 | Firefox's built-in AI | 45 | 36 |
 | Laya | 30 | 28 |
-| AI service: Gemma 4 E4B in LM Studio | 48 | 44 |
-
-Tabcat's and Firefox's copies of the model run on different runtimes, so a few tabs near the
-cut-off land differently (46 of 48 matched).
+| AI service (Gemma 4 E4B in LM Studio) | 48 | 44 |
 
 ## AI service
 
-Settings → **AI service** connects Tabcat to any service with an OpenAI-compatible chat
-completions API: OpenAI, OpenRouter, or a model on your computer with Ollama
-(`http://localhost:11434/v1`) or LM Studio (`http://localhost:1234/v1`). Give the address
-(up to `/v1`), an API key if it needs one, and the model. Then:
+You can connect any service with an OpenAI-compatible API: OpenAI, OpenRouter, or a model
+on your own computer with Ollama (`http://localhost:11434/v1`) or LM Studio
+(`http://localhost:1234/v1`). In Settings, enter the address (up to `/v1`), an API key if it
+needs one, and the model name. Then either:
 
-- in automatic mode, tick **Name groups with my AI service**. Finding related tabs still
-  happens on your computer; only the names come from the service.
-- in categories mode, choose **My AI service** as the model. It names a category or none,
-  so the minimum confidence doesn't apply.
+- tick **Name groups with my AI service**. Tabs are still grouped on your computer; only
+  the names come from the service, or
+- choose **My AI service** to sort tabs into your categories.
 
-The service is sent the titles, addresses and page descriptions of the tabs being named or
-sorted. If its address isn't on your computer, saving asks for Firefox's permission to send
-browsing activity and website content; without it, nothing is sent. The key is stored in
-your Firefox profile and only sent to that address. A service that fails stops Tidy with
-its error, and Reorganise puts your groups back.
+The service receives the titles, addresses (without the query string) and page descriptions
+of the tabs it names or sorts. If the address isn't on your computer, it must use https, and
+Firefox will ask your permission to send tab data. The key is stored in your Firefox profile
+and only sent to that address.
+
+## Settings
+
+Open them from the toolbar popup → **Settings**. You can:
+
+- choose automatic grouping or your categories
+- turn off grouping as you browse, and only group when you click **Tidy tabs**
+- stop a tab that matches nothing from getting a group of its own
+- set how alike tabs must be to share a group (automatic) or how sure the model must be
+  (categories)
+- turn off renaming groups when they grow
+- edit your categories
+- set up an AI service
+
+## Permissions
+
+- **Tabs and tab groups**: to read titles and addresses and move tabs.
+- **Access to all websites**: to show the "Moved to…" message on the page you're on, and
+  to read page descriptions. You can turn it off in `about:addons`. Without it, moves are
+  counted on the toolbar button and listed in the popup with Undo.
+- **Send tab data** (asked only when you set up a remote AI service).
+- **Firefox's built-in AI** (asked only if you choose it).
+
+## Installing
+
+Firefox 142 or later. Release Firefox only installs signed add-ons, so use a build signed by
+addons.mozilla.org, or load it yourself as below.
 
 ## Development
 
 ```sh
-npm install      # also copies transformers.js + the ONNX wasm runtime into extension/vendor/
-npm start        # runs Firefox with the extension loaded
+npm install      # also copies transformers.js and the ONNX runtime into extension/vendor/
+npm start        # opens Firefox with the extension loaded
 npm run lint
-npm run build    # self-contained package in web-ext-artifacts/
+npm run build    # packages the extension into web-ext-artifacts/
 ```
 
-Or load it by hand: `about:debugging` → This Firefox → Load Temporary Add-on →
+To load it by hand: `about:debugging` → This Firefox → Load Temporary Add-on →
 `extension/manifest.json` (after `npm install`).
 
 ## Tests
 
 ```sh
-npm test                 # unit tests for the pure helpers (instant, offline)
-npm run test:model       # grouping and categories quality floors, using the real model in Node
-npm run test:browser     # headless Firefox with the real extension
+npm test                 # unit tests (fast, offline)
+npm run test:model       # grouping and category quality, with the real model in Node
+npm run test:browser     # the real extension in headless Firefox
 npm run test:all
 ```
 
-The browser tests need Firefox 142+ (set `FIREFOX` to its binary if it isn't in the default
-place). They give tabs real hostnames by sending Firefox's traffic through a local proxy, so
-they don't touch the network apart from downloading the models. The test server also plays
-the AI service. Laya's test is skipped unless
-layad is running. Labelled tabs for all of them are in `test/fixtures/tabs.mjs`.
+The browser tests need Firefox 142 or later (set `FIREFOX` to its path if it isn't found).
+They send Firefox's traffic through a local proxy that serves fake pages and plays the AI
+service, so the only network access is downloading the models. The Laya test is skipped
+unless layad is running. The labelled test tabs are in `test/fixtures/tabs.mjs`.
 
-## Layout
+## Code
 
 ```
-extension/   Firefox MV3 extension
-  background.js   organises a window (automatic or by category)
+extension/
+  background.js   grouping, keeping tabs organised, undo
   cluster.js      clustering and naming helpers (no browser APIs)
-  ml.js           on-device models via transformers.js
-  providers.js    categories-mode models: on-device embeddings / Laya (layad) / AI service /
-                  Jev (stub)
-  ai-service.js   the user's OpenAI-compatible AI service: prompts and replies
-  firefox-ml.js   Firefox's built-in AI (browser.trial.ml)
-  toast.js        the "Moved … — Undo" message shown in pages
-  settings.js     default categories and settings
-  vendor/         transformers.js + ONNX runtime, copied in by `npm install` (not committed;
-                  included in the built package)
-scripts/vendor.mjs  copies the model runtime into extension/vendor/
-test/
-  unit/           pure helpers
-  model/          quality floors with the real model, in Node
-  browser/        headless Firefox with the real extension
-  fixtures/       labelled tabs
+  ml.js           the on-device models (transformers.js)
+  providers.js    what sorts tabs into categories
+  ai-service.js   talking to your AI service
+  firefox-ml.js   Firefox's built-in AI
+  toast.js        the "Moved to…" message
+  options.*       the Settings page
+  popup.*         the toolbar popup
+  settings.js     default settings and categories
+scripts/vendor.mjs  copies the model runtime into extension/vendor/ (not committed)
+test/             unit, model and browser tests, and labelled tabs
 ```
-
-## Testing the model directly
-
-With Laya, Tabcat sends a request like this for each tab:
-
-```sh
-curl -s http://127.0.0.1:8918/ai/run -H 'Content-Type: application/json' -d '{
-  "state": { "title": "Array.prototype.map() - MDN", "url": "developer.mozilla.org/en-US/docs/..." },
-  "questions": { "category": { "type": "choice", "instructions": "Which category?",
-    "criteria": { "dev": "Programming docs", "news": "News", "shopping": "Shops" } } }
-}'
-```
-
-## Switching to Jev
-
-layad speaks the Jev wire format, so `JevProvider.decide()` in `extension/providers.js`
-is the same `{ state, questions }` request to the hosted endpoint plus an API key. Add the
-API host to `host_permissions`, update `data_collection_permissions` (tab data would then
-leave the machine), and set `provider: "jev"` in settings.
