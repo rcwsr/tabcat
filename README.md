@@ -5,7 +5,8 @@ A Firefox extension that sorts your tabs into groups, on your own computer.
 By default it finds the groups itself: small AI models running inside the extension
 ([transformers.js](https://github.com/huggingface/transformers.js)) spot related tabs and
 name them. Nothing else to install. Or you can define your own categories and have each tab
-sorted into one. Either way tab data never leaves your machine.
+sorted into one. Either way tab data never leaves your machine, unless you choose to use an
+[AI service](#ai-service) of your own.
 
 ## Installing
 
@@ -32,7 +33,8 @@ until you next tidy or reorganise that window.
 
 Popup → **Settings** (or `about:addons` → Tabcat → Preferences) to choose automatic grouping
 or your own categories, how strict automatic grouping is, the categories and the minimum
-confidence below which tabs are left alone, and which model sorts into categories.
+confidence below which tabs are left alone, which model sorts into categories, and an
+optional [AI service](#ai-service).
 
 ## Keeping tabs organised
 
@@ -71,7 +73,10 @@ organised** in Settings to group only when asked.)
    counts it as "Not grouped (nothing similar)".
 4. Each new group gets a name from
    [smart-tab-topic](https://huggingface.co/Mozilla/smart-tab-topic) (the model Firefox's
-   own tab grouping uses), falling back to shared title words or the site.
+   own tab grouping uses), or from your [AI service](#ai-service) if it's set to name
+   groups. Either way it's given each distinct title once, with its page's description,
+   plus the words the titles share and the pages' own keywords. If there's no name, it falls
+   back to those words or the site.
 
 The models (about 80 MB) download from Hugging Face the first time you organise and are
 cached after that. Automatic mode doesn't use Firefox's built-in `browser.trial.ml`: it
@@ -101,9 +106,28 @@ minimum confidence:
 | Built into Tabcat | 43 | 36 |
 | Firefox's built-in AI | 45 | 36 |
 | Laya | 30 | 28 |
+| AI service: Gemma 4 E4B in LM Studio | 48 | 44 |
 
 Tabcat's and Firefox's copies of the model run on different runtimes, so a few tabs near the
 cut-off land differently (46 of 48 matched).
+
+## AI service
+
+Settings → **AI service** connects Tabcat to any service with an OpenAI-compatible chat
+completions API: OpenAI, OpenRouter, or a model on your computer with Ollama
+(`http://localhost:11434/v1`) or LM Studio (`http://localhost:1234/v1`). Give the address
+(up to `/v1`), an API key if it needs one, and the model. Then:
+
+- in automatic mode, tick **Name groups with my AI service**. Finding related tabs still
+  happens on your computer; only the names come from the service.
+- in categories mode, choose **My AI service** as the model. It names a category or none,
+  so the minimum confidence doesn't apply.
+
+The service is sent the titles, addresses and page descriptions of the tabs being named or
+sorted. If its address isn't on your computer, saving asks for Firefox's permission to send
+browsing activity and website content; without it, nothing is sent. The key is stored in
+your Firefox profile and only sent to that address. A service that fails stops Tidy with
+its error, and Reorganise puts your groups back.
 
 ## Development
 
@@ -128,7 +152,8 @@ npm run test:all
 
 The browser tests need Firefox 142+ (set `FIREFOX` to its binary if it isn't in the default
 place). They give tabs real hostnames by sending Firefox's traffic through a local proxy, so
-they don't touch the network apart from downloading the models. Laya's test is skipped unless
+they don't touch the network apart from downloading the models. The test server also plays
+the AI service. Laya's test is skipped unless
 layad is running. Labelled tabs for all of them are in `test/fixtures/tabs.mjs`.
 
 ## Layout
@@ -138,7 +163,9 @@ extension/   Firefox MV3 extension
   background.js   organises a window (automatic or by category)
   cluster.js      clustering and naming helpers (no browser APIs)
   ml.js           on-device models via transformers.js
-  providers.js    categories-mode models: on-device embeddings / Laya (layad) / Jev (stub)
+  providers.js    categories-mode models: on-device embeddings / Laya (layad) / AI service /
+                  Jev (stub)
+  ai-service.js   the user's OpenAI-compatible AI service: prompts and replies
   firefox-ml.js   Firefox's built-in AI (browser.trial.ml)
   toast.js        the "Moved … — Undo" message shown in pages
   settings.js     default categories and settings

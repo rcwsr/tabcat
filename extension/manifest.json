@@ -10,6 +10,10 @@
       "data_collection_permissions": {
         "required": [
           "none"
+        ],
+        "optional": [
+          "browsingActivity",
+          "websiteContent"
         ]
       }
     }

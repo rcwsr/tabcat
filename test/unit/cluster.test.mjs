@@ -8,6 +8,7 @@ import {
   chooseBySimilarity,
   isThin,
   nameCandidates,
+  namingInputs,
   sharedKeywords,
   tabText,
   topicPrompt,
@@ -48,6 +49,21 @@ test("sharedKeywords keeps words in two or more titles, skipping stop words and 
   assert.deepEqual(sharedKeywords(["Café Lisboa", "Café Porto"]), ["café"]);
   // Two copies of one page share every word, which says nothing about a group.
   assert.deepEqual(sharedKeywords(["Show the move message · Pull Request #17", "Show the move message · Pull Request #17"]), []);
+});
+
+test("namingInputs: each title once with its description, shared words then the pages' keywords", () => {
+  const pr = { title: "Show the move message · Pull Request #17", description: "Contribute on GitHub." };
+  assert.deepEqual(namingInputs([pr, { ...pr, description: "" }]), {
+    lines: ["Show the move message · Pull Request #17 — Contribute on GitHub."],
+    keywords: [],
+  });
+  assert.deepEqual(
+    namingInputs([
+      { title: "Lisbon flights", keywords: "Travel, Flights, Cheap, Deals" },
+      { title: "Hotels in Lisbon" },
+    ]),
+    { lines: ["Lisbon flights", "Hotels in Lisbon"], keywords: ["lisbon", "travel", "flights", "cheap"] },
+  );
 });
 
 test("topicPrompt matches the format smart-tab-topic was trained on", () => {
