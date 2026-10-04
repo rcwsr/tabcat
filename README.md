@@ -66,7 +66,9 @@ organised** in Settings to group only when asked.)
    aren't used there.
 2. Ungrouped tabs join an existing group (yours or Tabcat's) if they're close enough to it.
 3. The rest are clustered (average linkage on cosine similarity). Clusters of two or more
-   become new groups; lone tabs are left alone.
+   become new groups. A tab like no other gets a group of its own, unless you turn off
+   **If a tab matches no group, give it a new one**; then it's left out, and the popup
+   counts it as "Not grouped (nothing similar)".
 4. Each new group gets a name from
    [smart-tab-topic](https://huggingface.co/Mozilla/smart-tab-topic) (the model Firefox's
    own tab grouping uses), falling back to shared title words or the site.
