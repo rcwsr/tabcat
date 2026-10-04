@@ -7,7 +7,7 @@
       body { font: 14px system-ui, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
       fieldset { border: 1px solid #ccc; border-radius: 6px; margin-bottom: 16px; padding: 12px 16px; }
       label { display: block; margin: 8px 0 4px; }
-      input[type="text"], input[type="url"], select { font: inherit; padding: 4px 6px; width: 100%; box-sizing: border-box; }
+      input[type="text"], input[type="url"], input[type="password"], select { font: inherit; padding: 4px 6px; width: 100%; box-sizing: border-box; }
       .hint { color: #666; font-size: 12px; margin: 4px 0 0; }
       .choice { display: block; margin: 6px 0; }
       .choice input { margin-right: 6px; }
@@ -40,10 +40,12 @@
 
       <fieldset id="autoSettings">
         <legend>Automatic grouping</legend>
-        <p class="hint">Tabcat runs two small AI models on this computer: one to find related tabs, one to suggest names. The first run downloads them (about 80 MB) from Hugging Face; after that they're cached. Tab titles never leave this computer.</p>
+        <p class="hint">Tabcat runs two small AI models on this computer: one to find related tabs, one to suggest names. The first run downloads them (about 80 MB) from Hugging Face; after that they're cached. Tab titles don't leave this computer, unless you name groups with an AI service elsewhere.</p>
         <label for="groupingThreshold">Grouping strictness: <output id="groupingThresholdValue"></output></label>
         <input id="groupingThreshold" type="range" min="0.15" max="0.4" step="0.01" />
         <p class="hint">Higher keeps groups tighter and leaves more tabs alone. Lower groups more loosely.</p>
+        <label class="choice"><input type="checkbox" id="nameWithAi" />Name groups with my AI service</label>
+        <p class="hint">Finding related tabs still happens on this computer; only naming the groups uses the service.</p>
       </fieldset>
 
       <fieldset id="modelSettings">
@@ -53,6 +55,7 @@
           <option value="tabcat">Built into Tabcat (on this computer)</option>
           <option value="firefox">Firefox's built-in AI (on this computer, experimental)</option>
           <option value="laya">Laya via layad (on this computer)</option>
+          <option value="ai">My AI service</option>
           <option value="jev" disabled>TypeSafe Jev (not available yet)</option>
         </select>
         <p id="tabcatHint" class="hint">Uses the model Tabcat already downloads for automatic grouping. Nothing to set up.</p>
@@ -66,6 +69,19 @@
           <input id="layaUrl" type="url" required />
           <p class="hint">Where <a href="https://github.com/rcwsr/layad">layad</a> is listening (check with <code>layad status</code>). Only 127.0.0.1 addresses are allowed.</p>
         </div>
+      </fieldset>
+
+      <fieldset id="aiSettings">
+        <legend>AI service</legend>
+        <p class="hint">Any service with an OpenAI-compatible API: OpenAI, OpenRouter, or a model on this computer with Ollama or LM Studio. Tabcat sends it the titles, addresses and descriptions of the tabs it's grouping, unless the address is on this computer.</p>
+        <label for="apiUrl">Address</label>
+        <input id="apiUrl" type="url" placeholder="https://api.openai.com/v1" />
+        <p class="hint">Up to and including <code>/v1</code>. For Ollama: <code>http://localhost:11434/v1</code>.</p>
+        <label for="apiKey">API key</label>
+        <input id="apiKey" type="password" autocomplete="off" />
+        <p class="hint">Not needed for Ollama or LM Studio. Kept in this Firefox profile and only sent to the address above.</p>
+        <label for="apiModel">Model</label>
+        <input id="apiModel" type="text" placeholder="gpt-4.1-mini" />
       </fieldset>
 
       <fieldset id="categorySettings">

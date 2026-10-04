@@ -117,6 +117,34 @@ test("settings page", { timeout: 120_000 }, async (t) => {
     assert.equal(s.newGroupForLoneTabs, false);
   });
 
+  await t.test("naming groups with an AI service asks to send tab data, unless it's on this computer", async () => {
+    const SEND = `granted ${JSON.stringify({ data_collection: ["browsingActivity", "websiteContent"] })}`;
+    assert.equal(await hidden("#aiSettings"), true);
+    await page.click("#nameWithAi");
+    assert.equal(await hidden("#aiSettings"), false);
+    await page.$eval("#apiUrl", (e) => (e.value = "http://localhost:11434/v1"));
+    assert.deepEqual(await save(), { error: true, text: "Enter the AI service's model." });
+    await page.type("#apiModel", "llama3.2");
+    assert.deepEqual(await save(), { error: false, text: "Saved." });
+    assert.equal(await page.evaluate((k) => sessionStorage.getItem(k), SEND), null);
+
+    await page.$eval("#apiUrl", (e) => (e.value = "http://api.example.com/v1"));
+    assert.match((await save()).text, /must start with https/);
+    await page.$eval("#apiUrl", (e) => (e.value = "https://api.example.com/v1/"));
+    await page.type("#apiKey", "sk-test");
+    await page.evaluate(() => sessionStorage.setItem("deny", "1"));
+    assert.deepEqual(await save(), { error: true, text: "Not saved: Tabcat needs your permission to send tab data to your AI service." });
+    assert.equal((await stored()).apiUrl, "http://localhost:11434/v1");
+    await page.evaluate(() => sessionStorage.removeItem("deny"));
+    assert.deepEqual(await save(), { error: false, text: "Saved." });
+    assert.equal(await page.evaluate((k) => sessionStorage.getItem(k), SEND), "1");
+    const s = await stored();
+    assert.deepEqual([s.nameWithAi, s.apiUrl, s.apiKey, s.apiModel], [true, "https://api.example.com/v1", "sk-test", "llama3.2"]);
+
+    await page.click("#nameWithAi");
+    assert.equal(await hidden("#aiSettings"), true);
+  });
+
   await t.test("categories mode shows categories and the model, defaulting to Tabcat's", async () => {
     await page.click("input[name=mode][value=categories]");
     assert.equal(await hidden("#autoSettings"), true);
@@ -126,6 +154,10 @@ test("settings page", { timeout: 120_000 }, async (t) => {
     assert.equal(await hidden("#tabcatHint"), false);
     assert.equal(await hidden("#layaSettings"), true);
     assert.equal(await hidden("#firefoxSettings"), true);
+    assert.equal(await hidden("#aiSettings"), true);
+    await page.select("#provider", "ai");
+    assert.equal(await hidden("#aiSettings"), false);
+    await page.select("#provider", "tabcat");
   });
 
   await t.test("Firefox's built-in AI asks for permission", async () => {
