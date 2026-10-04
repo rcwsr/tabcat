@@ -19,7 +19,7 @@ function stubBrowserApis() {
   window.sent = [];
   window.badge = "1";
   const answers = {
-    organise: () => ({ groups: { Dev: 2 }, skipped: 1 }),
+    organise: () => ({ groups: { Dev: 2 }, skipped: 1, skippedBecause: "nothing similar" }),
     reorganise: () => ((snapshot = true), { groups: { Dev: 3, News: 2 }, skipped: 0, canUndo: true }),
     undoReorganise: () => ((snapshot = false), { restored: true }),
     canUndoReorganise: () => snapshot,
@@ -77,7 +77,7 @@ test("popup", { timeout: 120_000 }, async (t) => {
   await t.test("Tidy tabs shows what it did, with no Undo", async () => {
     assert.equal(await hidden("#undoReorganise"), true);
     await page.click("#organise");
-    await statusSays("Dev: 2\nLeft alone: 1");
+    await statusSays("Dev: 2\nNot grouped (nothing similar): 1");
     assert.equal(await hidden("#undoReorganise"), true);
   });
 

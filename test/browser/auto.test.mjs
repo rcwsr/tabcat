@@ -18,9 +18,10 @@ test("automatic grouping in Firefox", { timeout: 300_000 }, async (t) => {
   const urls = await ff.openTabs(TABS.map(([, title, url]) => [title, url]));
   const labelOf = Object.fromEntries(urls.map((u, i) => [u, TABS[i][0]]));
 
-  // The user has already grouped two of the trip tabs.
+  // The user has already grouped two of the trip tabs. One-off tabs are left out at first;
+  // the last step turns on giving each a group of its own.
   const [first, second] = await ff.organise({
-    settings: { mode: "auto" },
+    settings: { mode: "auto", newGroupForLoneTabs: false },
     groups: [{ title: "My trip", urls: urls.slice(0, 2) }],
     runs: 2,
   });
@@ -46,6 +47,8 @@ test("automatic grouping in Firefox", { timeout: 300_000 }, async (t) => {
   await t.test("one-off tabs are left alone", () => {
     const grouped = Object.entries(first.layout).filter(([url, title]) => title && labelOf[url] === "solo");
     assert.ok(grouped.length <= 1, `${grouped.length} one-off tabs grouped`);
+    assert.ok(first.result.skipped >= 2, `only ${first.result.skipped} not grouped`);
+    assert.equal(first.result.skippedBecause, "nothing similar");
   });
 
   await t.test("group names are clean", () => {
@@ -59,5 +62,19 @@ test("automatic grouping in Firefox", { timeout: 300_000 }, async (t) => {
     assert.equal(second.error, undefined);
     assert.equal(second.result.organised, 0);
     assert.deepEqual(second.layout, first.layout);
+  });
+
+  await t.test("with new groups for lone tabs, each one-off tab gets a group of its own", async () => {
+    await ff.command("set", { newGroupForLoneTabs: true });
+    const result = await ff.command("send", { type: "organise" });
+    assert.equal(result.skipped, 0);
+    const layout = await ff.command("layout");
+    const loose = Object.keys(first.layout).filter((url) => !first.layout[url]);
+    assert.ok(loose.every((url) => layout[url]), "a tab is still not grouped");
+    const titles = new Set(loose.map((url) => layout[url]));
+    assert.equal(titles.size, loose.length, "one-off tabs share a group");
+    for (const title of titles) assert.ok(!Object.values(first.layout).includes(title), `reused "${title}"`);
+    // The tabs grouped before stay where they were.
+    for (const [url, title] of Object.entries(first.layout)) if (title) assert.equal(layout[url], title);
   });
 });

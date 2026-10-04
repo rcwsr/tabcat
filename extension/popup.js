@@ -16,7 +16,7 @@ browser.runtime.onMessage.addListener((message) => {
 function describe(result) {
   if (result.restored !== undefined) return result.restored ? "Groups put back." : "Nothing to put back.";
   const lines = Object.entries(result.groups).map(([name, n]) => `${name}: ${n}`);
-  if (result.skipped) lines.push(`Left alone: ${result.skipped}`);
+  if (result.skipped) lines.push(`Not grouped (${result.skippedBecause}): ${result.skipped}`);
   return lines.join("\n") || "Nothing to organise.";
 }
 
