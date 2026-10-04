@@ -6,6 +6,8 @@
 // - BiDi can't open moz-extension:// pages, so organise() installs a copy of the extension
 //   with a hook appended to background.js. The hook fetches a task from the server, runs it
 //   with the extension's own functions and posts the results back.
+// - The server is also a stand-in AI service at ${origin}/v1 (OpenAI chat completions):
+//   ff.aiRequests records what it was asked, and ff.aiReply(request) says what it answers.
 import puppeteer from "puppeteer-core";
 import http from "node:http";
 import { spawn } from "node:child_process";
@@ -63,6 +65,17 @@ export async function launch({ firefoxML = false } = {}) {
     if (path === "/command") {
       if (command) return res.end(JSON.stringify(command));
       return (sendCommand = () => res.end(JSON.stringify(command)));
+    }
+    if (path === "/v1/chat/completions") {
+      let body = "";
+      req.on("data", (c) => (body += c));
+      req.on("end", () => {
+        const request = { ...JSON.parse(body), authorization: req.headers.authorization };
+        ff.aiRequests.push(request);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ choices: [{ message: { role: "assistant", content: ff.aiReply(request) } }] }));
+      });
+      return;
     }
     if (path === "/done" || path === "/reply") {
       let body = "";
@@ -128,6 +141,8 @@ export async function launch({ firefoxML = false } = {}) {
   const ff = {
     browser,
     origin: `http://127.0.0.1:${port}`,
+    aiRequests: [],
+    aiReply: () => "none",
 
     // Opens one tab per [title, url, meta]; url is host + path, served over the proxy, and
     // meta is optional { name: content } for <meta> tags. With background, the tab you were

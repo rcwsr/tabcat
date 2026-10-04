@@ -2,6 +2,7 @@
 //   decide(state, questions) -> { answers, usage }
 // using the Jev request and response shapes.
 
+import { categoryMessages, chat, parseCategory } from "./ai-service.js";
 import { chooseBySimilarity, choiceText } from "./cluster.js";
 import { embedWithFirefox } from "./firefox-ml.js";
 import { embed } from "./ml.js";
@@ -64,6 +65,26 @@ export class EmbeddingProvider {
   }
 }
 
+// Asks the user's AI service (see ai-service.js). It names one category or none, so its
+// confidence is 1 or 0.
+export class AiServiceProvider {
+  wantsPageInfo = true;
+
+  constructor(settings) {
+    this.settings = settings;
+  }
+
+  async decide(state, questions) {
+    const answers = {};
+    for (const [name, { type, criteria }] of Object.entries(questions)) {
+      if (type !== "choice") throw new Error(`The AI service can't answer "${type}" questions.`);
+      const choice = parseCategory(await chat(this.settings, categoryMessages(state, criteria)), criteria);
+      answers[name] = { choice, probabilities: choice ? { [choice]: 1 } : {} };
+    }
+    return { answers };
+  }
+}
+
 export class JevProvider {
   constructor(apiKey) {
     this.apiKey = apiKey;
@@ -81,6 +102,8 @@ export function createProvider(settings) {
       return new JevProvider(settings.jevApiKey);
     case "laya":
       return new LayaProvider(settings.layaUrl);
+    case "ai":
+      return new AiServiceProvider(settings);
     case "firefox":
       return new EmbeddingProvider(embedWithFirefox);
     case "tabcat":

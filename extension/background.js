@@ -1,10 +1,11 @@
 import { DEFAULT_SETTINGS } from "./settings.js";
+import { chat, namingMessages, parseName } from "./ai-service.js";
 import {
   averageLinkage,
   averageSimilarity,
   isThin,
   nameCandidates,
-  sharedKeywords,
+  namingInputs,
   tabText,
   topicPrompt,
   withPageInfo,
@@ -29,7 +30,9 @@ function describeTab(tab) {
 }
 
 async function classifyTab(tab, categories, provider) {
-  const result = await provider.decide(describeTab(tab), {
+  const state = describeTab(tab);
+  if (provider.wantsPageInfo) state.description = (await pageInfoIfLoaded(tab))?.description ?? "";
+  const result = await provider.decide(state, {
     category: {
       type: "choice",
       instructions: "Which category does this browser tab belong to?",
@@ -85,7 +88,7 @@ async function organiseByCategory(windowId, tabs, settings) {
   for (const tab of tabs) {
     if (isGrouped(tab) && !categoryTitles.has(groupTitles.get(tab.groupId))) continue;
     const { choice, confidence } = await classifyTab(tab, settings.categories, provider);
-    if (confidence < settings.minConfidence) {
+    if (!choice || confidence < settings.minConfidence) {
       skipped++;
       continue;
     }
@@ -127,6 +130,8 @@ async function pageInfo(tab) {
   }
   return pageInfoCache.get(key);
 }
+
+const pageInfoIfLoaded = async (tab) => (tab.status === "complete" ? pageInfo(tab) : null);
 
 // What the embedding model sees for each tab. Tabs with thin text (a home page titled
 // with just the site's name) get their page's description added; for other tabs it made
@@ -193,7 +198,7 @@ async function organiseAutomatically(windowId, tabs, settings) {
   const taken = new Set(existing.map((g) => g.title));
   for (const ix of made) {
     const members = ix.map((i) => tabs[i]);
-    groups.push({ title: await nameGroup(members, taken, progress), tabIds: members.map((t) => t.id) });
+    groups.push({ title: await nameGroup(members, taken, settings, progress), tabIds: members.map((t) => t.id) });
   }
 
   await applyGroups(windowId, groups);
@@ -201,14 +206,18 @@ async function organiseAutomatically(windowId, tabs, settings) {
   return summarise(groups, skipped);
 }
 
-// A name for a new group of these tabs, from the topic model, that isn't in `taken` (the
-// window's group titles; the new name is added). An unrelated group shouldn't get folded
-// into an existing one just because the names match.
-async function nameGroup(tabs, taken, onProgress) {
-  // Copies of one page would make every word in its title a "shared" keyword.
-  const titles = [...new Set(tabs.map((t) => t.title ?? ""))];
-  const keywords = sharedKeywords(titles);
-  const suggestion = await topic(topicPrompt(titles, keywords), onProgress);
+// A name for a new group of these tabs, from the topic model (or the AI service, if it's
+// set to name groups), that isn't in `taken` (the window's group titles; the new name is
+// added). An unrelated group shouldn't get folded into an existing one just because the
+// names match. Both are given the pages' descriptions and keywords as well as the titles.
+async function nameGroup(tabs, taken, settings, onProgress) {
+  const pages = await Promise.all(
+    tabs.map(async (t) => ({ title: t.title ?? "", ...describeTab(t), ...(await pageInfoIfLoaded(t)) })),
+  );
+  const { lines, keywords } = namingInputs(pages);
+  const suggestion = settings.nameWithAi
+    ? parseName(await chat(settings, namingMessages(pages)))
+    : await topic(topicPrompt(lines, keywords), onProgress);
   const hosts = tabs.map((t) => new URL(t.url).hostname);
   const base = nameCandidates(suggestion, keywords, hosts)[0] ?? "Tabs";
   let title = base;
@@ -417,13 +426,13 @@ async function autoTarget(tab, settings) {
   if (cluster.length < 2 && !settings.newGroupForLoneTabs) return null;
   const members = cluster.map((i) => tabs[i]);
   const taken = new Set((await browser.tabGroups.query({ windowId: tab.windowId })).map((g) => g.title));
-  return { title: await nameGroup(members, taken), tabs: members };
+  return { title: await nameGroup(members, taken, settings), tabs: members };
 }
 
 // Categories mode: the category's group, made if it doesn't exist yet.
 async function categoryFor(tab, settings) {
   const { choice, confidence } = await classifyTab(tab, settings.categories, createProvider(settings));
-  if (confidence < settings.minConfidence) return null;
+  if (!choice || confidence < settings.minConfidence) return null;
   const title = titleFor(choice);
   const group = (await browser.tabGroups.query({ windowId: tab.windowId })).find((g) => g.title === title);
   return { groupId: group?.id, title };

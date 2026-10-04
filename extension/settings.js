@@ -22,7 +22,14 @@ export const DEFAULT_SETTINGS = {
   // With keepOrganised in automatic mode: a tab that matches no group and no other loose
   // tab gets a group of its own instead of being left alone.
   newGroupForLoneTabs: true,
-  // Categories mode: "tabcat" (bundled on-device model), "firefox" (Firefox's built-in AI) or "laya".
+  // Automatic mode: name groups with the AI service below instead of the on-device model.
+  nameWithAi: false,
+  // An OpenAI-compatible AI service (see ai-service.js): its address (up to /v1), key and model.
+  apiUrl: "",
+  apiKey: "",
+  apiModel: "",
+  // Categories mode: "tabcat" (bundled on-device model), "firefox" (Firefox's built-in AI),
+  // "laya" or "ai" (the AI service above).
   provider: "tabcat",
   layaUrl: "http://127.0.0.1:8918",
   jevApiKey: "",

@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS } from "./settings.js";
 import { FIREFOX_ML_PERMISSION } from "./firefox-ml.js";
+import { SEND_TAB_DATA, checkService, isLocal } from "./ai-service.js";
 
 const form = document.getElementById("settings");
 const provider = document.getElementById("provider");
@@ -23,6 +24,11 @@ const groupingThresholdValue = document.getElementById("groupingThresholdValue")
 const keepOrganised = document.getElementById("keepOrganised");
 const newGroupForLoneTabs = document.getElementById("newGroupForLoneTabs");
 const toastStatus = document.getElementById("toastStatus");
+const nameWithAi = document.getElementById("nameWithAi");
+const aiSettings = document.getElementById("aiSettings");
+const apiUrl = document.getElementById("apiUrl");
+const apiKey = document.getElementById("apiKey");
+const apiModel = document.getElementById("apiModel");
 
 // Lets Tabcat show "Moved … — Undo" in the page you're on. Granted at install; you can turn
 // it off in about:addons.
@@ -53,6 +59,17 @@ function showMode(mode) {
   categorySettings.hidden = categorySettings.disabled = mode !== "categories";
   // Only categories mode uses the decision model.
   modelSettings.hidden = modelSettings.disabled = mode !== "categories";
+  showAiSettings();
+}
+
+function usesAi() {
+  const mode = selectedMode();
+  return (mode === "auto" && nameWithAi.checked) || (mode === "categories" && provider.value === "ai");
+}
+
+// The AI service's settings are only shown while something uses it.
+function showAiSettings() {
+  aiSettings.hidden = !usesAi();
 }
 
 // Only the chosen model's settings are shown; disabling layad's also stops its URL blocking Save.
@@ -60,6 +77,7 @@ function showProvider(value) {
   tabcatHint.hidden = value !== "tabcat";
   firefoxSettings.hidden = value !== "firefox";
   layaUrl.disabled = layaSettings.hidden = value !== "laya";
+  showAiSettings();
 }
 
 async function showFirefoxPermission() {
@@ -79,6 +97,10 @@ function render(settings) {
   showMode(settings.mode);
   keepOrganised.checked = settings.keepOrganised;
   newGroupForLoneTabs.checked = settings.newGroupForLoneTabs;
+  nameWithAi.checked = settings.nameWithAi;
+  apiUrl.value = settings.apiUrl;
+  apiKey.value = settings.apiKey;
+  apiModel.value = settings.apiModel;
   groupingThreshold.value = settings.groupingThreshold;
   groupingThresholdValue.textContent = Number(settings.groupingThreshold).toFixed(2);
   // A disabled option can't stay selected, so fall back to the bundled model.
@@ -96,7 +118,7 @@ function render(settings) {
 // Returns settings to save, or throws with a message for the user.
 function collect() {
   const settings = { mode: selectedMode(), keepOrganised: keepOrganised.checked,
-    newGroupForLoneTabs: newGroupForLoneTabs.checked,
+    newGroupForLoneTabs: newGroupForLoneTabs.checked, nameWithAi: nameWithAi.checked,
     groupingThreshold: Number(groupingThreshold.value), provider: provider.value };
   if (provider.value === "laya") {
     let url;
@@ -110,6 +132,13 @@ function collect() {
       throw new Error("layad URL must be http://127.0.0.1:<port>.");
     }
     settings.layaUrl = url.origin;
+  }
+
+  if (usesAi()) {
+    const { url, key, model } = checkService({ url: apiUrl.value, key: apiKey.value, model: apiModel.value });
+    Object.assign(settings, { apiUrl: url, apiKey: key, apiModel: model });
+  } else {
+    Object.assign(settings, { apiUrl: apiUrl.value.trim(), apiKey: apiKey.value.trim(), apiModel: apiModel.value.trim() });
   }
 
   const categories = {};
@@ -136,6 +165,7 @@ groupingThreshold.addEventListener("input", () => {
 });
 
 provider.addEventListener("change", () => showProvider(provider.value));
+nameWithAi.addEventListener("change", showAiSettings);
 
 allowFirefox.addEventListener("click", async () => {
   // Must run straight from the click: Firefox only shows permission prompts for user actions.
@@ -162,7 +192,13 @@ document.getElementById("reset").addEventListener("click", () => {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
-    await browser.storage.local.set(collect());
+    const settings = collect();
+    // Sending tab data off this computer needs Firefox's data collection permission. The
+    // request must come straight from the click, before any other await.
+    if (usesAi() && !isLocal(settings.apiUrl) && !(await browser.permissions.request(SEND_TAB_DATA))) {
+      throw new Error("Not saved: Tabcat needs your permission to send tab data to your AI service.");
+    }
+    await browser.storage.local.set(settings);
     show("Saved.");
   } catch (err) {
     show(err.message, true);
