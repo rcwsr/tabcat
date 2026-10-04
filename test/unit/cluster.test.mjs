@@ -46,6 +46,8 @@ test("sharedKeywords keeps words in two or more titles, skipping stop words and 
   assert.deepEqual(sharedKeywords(["Lisbon flights", "Hotels in Lisbon", "Weather"]), ["lisbon"]);
   assert.deepEqual(sharedKeywords(["The 2026 guide", "The 2026 list"]), []);
   assert.deepEqual(sharedKeywords(["Café Lisboa", "Café Porto"]), ["café"]);
+  // Two copies of one page share every word, which says nothing about a group.
+  assert.deepEqual(sharedKeywords(["Show the move message · Pull Request #17", "Show the move message · Pull Request #17"]), []);
 });
 
 test("topicPrompt matches the format smart-tab-topic was trained on", () => {

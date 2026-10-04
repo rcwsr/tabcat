@@ -205,7 +205,8 @@ async function organiseAutomatically(windowId, tabs, settings) {
 // window's group titles; the new name is added). An unrelated group shouldn't get folded
 // into an existing one just because the names match.
 async function nameGroup(tabs, taken, onProgress) {
-  const titles = tabs.map((t) => t.title ?? "");
+  // Copies of one page would make every word in its title a "shared" keyword.
+  const titles = [...new Set(tabs.map((t) => t.title ?? ""))];
   const keywords = sharedKeywords(titles);
   const suggestion = await topic(topicPrompt(titles, keywords), onProgress);
   const hosts = tabs.map((t) => new URL(t.url).hostname);
