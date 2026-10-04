@@ -38,7 +38,7 @@ export class LayaProvider {
 
 // Answers choice questions on the device: the option whose description is most similar to
 // the tab (by sentence embeddings) wins. Its confidence is rougher than Laya's: on 48
-// labelled tabs at 0.5 it placed 43, 32 correctly, where Laya placed 31, 28 correctly
+// labelled tabs at 0.5 it placed 43, 36 correctly, where Laya placed 30, 28 correctly
 // (see test/browser/categories.test.mjs).
 export class EmbeddingProvider {
   constructor(embedFn) {
@@ -96,6 +96,9 @@ export class JevProvider {
   }
 }
 
+// The on-device providers keep the categories' vectors, so they're made once.
+const onDevice = {};
+
 export function createProvider(settings) {
   switch (settings.provider) {
     case "jev":
@@ -105,9 +108,9 @@ export function createProvider(settings) {
     case "ai":
       return new AiServiceProvider(settings);
     case "firefox":
-      return new EmbeddingProvider(embedWithFirefox);
+      return (onDevice.firefox ??= new EmbeddingProvider(embedWithFirefox));
     case "tabcat":
     default:
-      return new EmbeddingProvider(embed);
+      return (onDevice.tabcat ??= new EmbeddingProvider(embed));
   }
 }
