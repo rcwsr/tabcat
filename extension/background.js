@@ -249,10 +249,14 @@ async function setOnePage(groupId, title) {
   await browser.storage.session.set({ onePage: named });
 }
 
-// After tabs join a group: if it was named from one page and now has a different page too, names it again from all its tabs. Not if you've renamed it. Returns the new name.
+// After tabs join a group: if it was named from one page and now has a different page too,
+// names it again from all its tabs. Not if you've renamed it, or if renameGrowingGroups is
+// off. Returns the new name.
 async function renameIfOutgrown(groupId) {
   const named = (await sessionGet("onePage", {}))[groupId];
   if (!named) return;
+  const settings = await getSettings();
+  if (!settings.renameGrowingGroups) return;
   const group = await browser.tabGroups.get(groupId);
   const tabs = await browser.tabs.query({ windowId: group.windowId });
   const members = tabs.filter((t) => t.groupId === groupId);
@@ -260,7 +264,7 @@ async function renameIfOutgrown(groupId) {
   await setOnePage(groupId, null);
   if (group.title !== named) return;
   const others = (await browser.tabGroups.query({ windowId: group.windowId })).filter((g) => g.id !== groupId);
-  const { title } = await nameGroup(members, new Set(others.map((g) => g.title)), await getSettings());
+  const { title } = await nameGroup(members, new Set(others.map((g) => g.title)), settings);
   await browser.tabGroups.update(groupId, { title });
   return title;
 }

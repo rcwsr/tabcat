@@ -25,6 +25,7 @@ const keepOrganised = document.getElementById("keepOrganised");
 const newGroupForLoneTabs = document.getElementById("newGroupForLoneTabs");
 const toastStatus = document.getElementById("toastStatus");
 const nameWithAi = document.getElementById("nameWithAi");
+const renameGrowingGroups = document.getElementById("renameGrowingGroups");
 const aiSettings = document.getElementById("aiSettings");
 const apiUrl = document.getElementById("apiUrl");
 const apiKey = document.getElementById("apiKey");
@@ -98,6 +99,7 @@ function render(settings) {
   keepOrganised.checked = settings.keepOrganised;
   newGroupForLoneTabs.checked = settings.newGroupForLoneTabs;
   nameWithAi.checked = settings.nameWithAi;
+  renameGrowingGroups.checked = settings.renameGrowingGroups;
   apiUrl.value = settings.apiUrl;
   apiKey.value = settings.apiKey;
   apiModel.value = settings.apiModel;
@@ -119,6 +121,7 @@ function render(settings) {
 function collect() {
   const settings = { mode: selectedMode(), keepOrganised: keepOrganised.checked,
     newGroupForLoneTabs: newGroupForLoneTabs.checked, nameWithAi: nameWithAi.checked,
+    renameGrowingGroups: renameGrowingGroups.checked,
     groupingThreshold: Number(groupingThreshold.value), provider: provider.value };
   if (provider.value === "laya") {
     let url;
