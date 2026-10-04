@@ -77,4 +77,13 @@ test("automatic grouping in Firefox", { timeout: 300_000 }, async (t) => {
     // The tabs grouped before stay where they were.
     for (const [url, title] of Object.entries(first.layout)) if (title) assert.equal(layout[url], title);
   });
+
+  await t.test("tabs that say almost nothing go together if they're on the same site", async () => {
+    await ff.command("set", { keepOrganised: false });
+    const [home, browse] = await ff.openTabs([["Twitch", "www.twitch.tv/"], ["Twitch", "www.twitch.tv/directory"]]);
+    await ff.command("send", { type: "organise" });
+    const layout = await ff.command("layout");
+    assert.ok(layout[home], "not grouped");
+    assert.equal(layout[browse], layout[home]);
+  });
 });

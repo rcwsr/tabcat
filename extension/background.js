@@ -184,7 +184,7 @@ async function organiseAutomatically(windowId, tabs, settings) {
       if (s >= threshold && (!best || s > best.s)) best = { groupId, s };
     }
     if (best) joins.set(best.groupId, [...(joins.get(best.groupId) ?? []), tab.id]);
-    // A thin tab is only clustered by site, which joining a group covers well enough.
+    // A thin tab only goes with tabs from its own site.
     else if (!isThin(texts[i])) loose.push(i);
     else thin.push(i);
   });
@@ -196,7 +196,8 @@ async function organiseAutomatically(windowId, tabs, settings) {
 
   const clusters = [
     ...averageLinkage(vectors, loose, threshold),
-    ...thin.map((i) => [i]),
+    // Thin tabs from the same site go together.
+    ...Map.groupBy(thin, (i) => hostname(tabs[i])).values(),
   ];
   // A tab like nothing else gets a group of its own, as when it loads, unless that's off.
   const made = clusters.filter((c) => c.length >= 2 || settings.newGroupForLoneTabs);
@@ -406,9 +407,16 @@ async function sessionGet(key, fallback) {
   return (await browser.storage.session.get({ [key]: fallback }))[key];
 }
 
-async function leaveAlone(tabId) {
-  const ids = await sessionGet("leftAlone", []);
-  if (!ids.includes(tabId)) await browser.storage.session.set({ leftAlone: [...ids, tabId] });
+// One at a time: ungrouping a whole group takes every tab out at once, and overlapping
+// reads and writes of the list would lose some of them.
+let leaving = Promise.resolve();
+
+function leaveAlone(tabId) {
+  leaving = leaving.then(async () => {
+    const ids = await sessionGet("leftAlone", []);
+    if (!ids.includes(tabId)) await browser.storage.session.set({ leftAlone: [...ids, tabId] });
+  });
+  return leaving;
 }
 
 async function placeTab(tabId) {
