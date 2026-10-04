@@ -56,7 +56,8 @@ export async function launch({ firefoxML = false } = {}) {
       if (title === undefined) return res.writeHead(404).end();
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       const meta = Object.entries(metas.get(new URL(req.url).href) ?? {})
-        .map(([name, content]) => `<meta name="${escape(name)}" content="${escape(content)}">`)
+        // Open Graph tags use property=, the rest name=.
+        .map(([name, content]) => `<meta ${name.startsWith("og:") ? "property" : "name"}="${escape(name)}" content="${escape(content)}">`)
         .join("");
       return res.end(`<!doctype html><title>${escape(title)}</title>${meta}<p>${escape(title)}`);
     }
