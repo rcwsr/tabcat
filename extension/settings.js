@@ -22,6 +22,8 @@ export const DEFAULT_SETTINGS = {
   // With keepOrganised in automatic mode: a tab that matches no group and no other loose
   // tab gets a group of its own instead of being left alone.
   newGroupForLoneTabs: true,
+  // Automatic mode: when a different page joins a group named from one page, name it again.
+  renameGrowingGroups: true,
   // Automatic mode: name groups with the AI service below instead of the on-device model.
   nameWithAi: false,
   // An OpenAI-compatible AI service (see ai-service.js): its address (up to /v1), key and model.

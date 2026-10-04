@@ -12,7 +12,7 @@ const NEWS = ["Home - BBC News", "UK inflation falls", "Election results live"].
 const RUST = tab("The Rust Programming Language");
 const STORM = tab("Storm warning");
 const CYCLING = [
-  ["Men's Cycling Jerseys | Castelli", "www.castelli-cycling.com/GB/en/men/jerseys"],
+  ["Men's Cycling Jerseys | Castelli", "www.castelli-cycling.com/GB/en/men/jerseys", { "og:site_name": "Castelli" }],
   ["Road Bikes | Canyon GB", "www.canyon.com/en-gb/road-bikes/"],
 ];
 const BAKING = [

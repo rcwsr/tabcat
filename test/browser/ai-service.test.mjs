@@ -2,6 +2,7 @@
 // automatic mode, then sorting into categories.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { setTimeout as sleep } from "node:timers/promises";
 import { CATEGORY_TABS } from "../fixtures/tabs.mjs";
 import { launch } from "./firefox.mjs";
 
@@ -14,6 +15,16 @@ const TRIP = [
 const NEWS = ["Home - BBC News", "UK inflation falls", "Election results live"].map(tab);
 
 const lastMessage = (request) => request.messages.at(-1).content;
+
+async function waitForLayout(ff, check, what) {
+  const deadline = Date.now() + 60_000;
+  for (;;) {
+    const layout = await ff.command("layout");
+    if (check(layout)) return layout;
+    if (Date.now() > deadline) assert.fail(`timed out waiting for ${what}: ${JSON.stringify(layout)}`);
+    await sleep(500);
+  }
+}
 
 test("AI service", { timeout: 300_000 }, async (t) => {
   const ff = await launch();
@@ -43,17 +54,29 @@ test("AI service", { timeout: 300_000 }, async (t) => {
     assert.match(lastMessage(ff.aiRequests.find((r) => lastMessage(r).includes("Lisbon"))), /Lisbon's oldest district/);
   });
 
+  await t.test("a group named from one page is named again when another joins", async () => {
+    // Each line of tabs in the prompt starts "- ".
+    const tabCount = (request) => lastMessage(request).split("\n").filter((l) => l.startsWith("- ")).length;
+    ff.aiReply = (request) => (tabCount(request) === 1 ? "Personal Email" : "Email");
+    const [personal] = await ff.openTabs([["Inbox - robincawser@gmail.com - Gmail", "mail.google.com/mail/u/0/"]]);
+    await waitForLayout(ff, (l) => l[personal] === "Personal Email", "the inbox to get a group");
+    const [work] = await ff.openTabs([["Inbox - robin@cwsr.dev - Cwsr.dev Mail", "mail.google.com/mail/u/1/"]]);
+    await waitForLayout(ff, (l) => l[work] === "Email" && l[personal] === "Email", "the work inbox to join and the group to be renamed");
+  });
+
   await t.test("sorts into categories", async () => {
     ff.aiRequests.length = 0;
     ff.aiReply = (request) => (/bbc|reuters|guardian/.test(lastMessage(request)) ? "News." : "none");
     await ff.command("set", { mode: "categories", provider: "ai" });
     const result = await ff.command("send", { type: "reorganise" });
-    assert.equal(result.skipped, trip.length);
     assert.equal(result.skippedBecause, "no category fits");
     const layout = await ff.command("layout");
     for (const url of news) assert.equal(layout[url], "News");
     for (const url of trip) assert.equal(layout[url], null);
-    assert.equal(ff.aiRequests.length, urls.length);
+    // Everything but the news, the inboxes included.
+    const all = Object.keys(layout);
+    assert.equal(result.skipped, all.length - news.length);
+    assert.equal(ff.aiRequests.length, all.length);
     assert.match(ff.aiRequests[0].messages[0].content, /- dev: Programming/);
   });
 

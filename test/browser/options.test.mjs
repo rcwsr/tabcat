@@ -84,12 +84,15 @@ test("settings page", { timeout: 120_000 }, async (t) => {
   });
 
   await t.test("saves automatic mode and strictness", async () => {
+    assert.equal(await page.$eval("#renameGrowingGroups", (e) => e.checked), true);
+    await page.click("#renameGrowingGroups");
     await setRange("groupingThreshold", "0.3");
     assert.equal(await text("#groupingThresholdValue"), "0.30");
     assert.deepEqual(await save(), { error: false, text: "Saved." });
     const s = await stored();
     assert.equal(s.mode, "auto");
     assert.equal(s.groupingThreshold, 0.3);
+    assert.equal(s.renameGrowingGroups, false);
   });
 
   await t.test("keeping tabs organised is on, with a note only if website access is off", async () => {
