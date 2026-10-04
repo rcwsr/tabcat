@@ -118,7 +118,10 @@ export function siteName(title, url) {
     return labels.some((l) => p === l || (p.length >= 4 && (p.includes(l) || l.includes(p))));
   };
   const parts = title.split(/\s+[|·•–—-]\s+|:\s+/).map((p) => p.trim()).filter(Boolean);
-  const found = parts.find((p) => p.split(/\s+/).length <= 4 && matches(p));
+  // The shortest match: "Gmail", not "robin@gmail.com".
+  const [found] = parts
+    .filter((p) => !p.includes("@") && p.split(/\s+/).length <= 4 && matches(p))
+    .sort((a, b) => a.length - b.length);
   if (found) return found;
   const name = all.filter((l) => l.length > 1 && !NOT_SITES.has(l)).at(-1) ?? all.join(".");
   return name.charAt(0).toUpperCase() + name.slice(1);

@@ -72,6 +72,7 @@ test("siteName: the part of the title naming the site, else the hostname's name"
   assert.equal(siteName("Workspace Overview | Settings | OpenRouter", "https://openrouter.ai/settings"), "OpenRouter");
   assert.equal(siteName("python - How do I merge two dictionaries? - Stack Overflow", "https://stackoverflow.com/q/1"), "Stack Overflow");
   assert.equal(siteName("Inbox (12) - robin@company.com - Gmail", "https://mail.google.com/mail/u/0"), "Gmail");
+  assert.equal(siteName("Inbox - robincawser@gmail.com - Gmail", "https://mail.google.com/mail/u/0/#inbox"), "Gmail");
   assert.equal(siteName("Rightmove - 2 bed flats for sale in Bristol", "https://www.rightmove.co.uk/x"), "Rightmove");
   assert.equal(siteName("Show the move message · Pull Request #17 · rcwsr/tabcat", "https://github.com/rcwsr/tabcat/pull/17"), "Github");
   assert.equal(siteName("Home / X", "https://x.com/home"), "X.com");
