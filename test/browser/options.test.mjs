@@ -92,19 +92,19 @@ test("settings page", { timeout: 120_000 }, async (t) => {
     assert.equal(s.groupingThreshold, 0.3);
   });
 
-  await t.test("keeping tabs organised is on, and offers to show messages on pages", async () => {
+  await t.test("keeping tabs organised is on, with a note only if website access is off", async () => {
     assert.equal(await page.$eval("#keepOrganised", (e) => e.checked), true);
     assert.equal(await page.$eval("#newGroupForLoneTabs", (e) => e.checked), true);
+    // The stub hasn't granted it, as if it had been turned off in about:addons.
+    assert.equal(await hidden("#toastStatus"), false);
     assert.match(await text("#toastStatus"), /listed in Tabcat's popup/);
-    // Refused: the button stays, to ask again.
-    await page.evaluate(() => sessionStorage.setItem("deny", "1"));
-    await page.click("#allowToasts");
+    assert.equal(await page.$("#allowToasts"), null);
+    // Granted (as it is at install): no note.
+    await page.evaluate(() => sessionStorage.setItem(`granted ${JSON.stringify({ origins: ["<all_urls>"] })}`, "1"));
+    await page.click("#keepOrganised");
+    await page.click("#keepOrganised");
     await settleClicks();
-    assert.equal(await hidden("#allowToasts"), false);
-    await page.evaluate(() => sessionStorage.removeItem("deny"));
-    await page.click("#allowToasts");
-    await page.waitForFunction(() => document.getElementById("allowToasts").hidden);
-    assert.match(await text("#toastStatus"), /message with Undo at the bottom/);
+    assert.equal(await hidden("#toastStatus"), true);
   });
 
   await t.test("saves the keep-organised settings", async () => {
