@@ -64,7 +64,8 @@ export function namingMessages(tabs) {
       content:
         "You name groups of browser tabs. Reply with the name only: one to three words, " +
         "title case, saying what the tabs are about or for (like Trip to Lisbon, Rust, " +
-        "House Hunting, Shopping). No quotes or punctuation.",
+        "House Hunting, Shopping). No quotes or punctuation. Don't use email addresses, " +
+        "people's names, numbers or codes from the titles.",
     },
     { role: "user", content: `Tabs in the group:\n${describe(tabs)}` },
   ];
