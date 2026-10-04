@@ -9,6 +9,7 @@ import {
   isThin,
   nameCandidates,
   namingInputs,
+  siteName,
   sharedKeywords,
   tabText,
   topicPrompt,
@@ -64,6 +65,17 @@ test("namingInputs: each title once with its description, shared words then the 
     ]),
     { lines: ["Lisbon flights", "Hotels in Lisbon"], keywords: ["lisbon", "travel", "flights", "cheap"] },
   );
+});
+
+test("siteName: the part of the title naming the site, else the hostname's name", () => {
+  assert.equal(siteName("Easyfix Washers M7 x 3mm 10 Pack | Screwfix", "https://www.screwfix.com/p/1"), "Screwfix");
+  assert.equal(siteName("Workspace Overview | Settings | OpenRouter", "https://openrouter.ai/settings"), "OpenRouter");
+  assert.equal(siteName("python - How do I merge two dictionaries? - Stack Overflow", "https://stackoverflow.com/q/1"), "Stack Overflow");
+  assert.equal(siteName("Inbox (12) - robin@company.com - Gmail", "https://mail.google.com/mail/u/0"), "Gmail");
+  assert.equal(siteName("Rightmove - 2 bed flats for sale in Bristol", "https://www.rightmove.co.uk/x"), "Rightmove");
+  assert.equal(siteName("Show the move message · Pull Request #17 · rcwsr/tabcat", "https://github.com/rcwsr/tabcat/pull/17"), "Github");
+  assert.equal(siteName("Home / X", "https://x.com/home"), "X.com");
+  assert.equal(siteName("Self Assessment tax returns - GOV.UK", "https://www.gov.uk/self-assessment"), "GOV.UK");
 });
 
 test("topicPrompt matches the format smart-tab-topic was trained on", () => {

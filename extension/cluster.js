@@ -99,6 +99,31 @@ export function namingInputs(tabs) {
   return { lines: [...lines.values()], keywords };
 }
 
+const squash = (s) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+// Parts of a hostname that don't name the site, and (after them) ones that only name part of it.
+const NOT_NAMES = new Set("www com co uk org net io ai app dev gov ac".split(" "));
+const NOT_SITES = new Set([...NOT_NAMES, ..."en m mail docs web open".split(" ")]);
+
+// The site's own name for a page: the part of the title that matches the hostname ("Screwfix"
+// in "Easyfix Washers M7 | Screwfix", "Stack Overflow" for stackoverflow.com), else the
+// hostname's name ("Github"). The small topic model names a single page badly ("Appliances"
+// for those washers), so a group of one page is named after its site.
+export function siteName(title, url) {
+  const host = new URL(url).hostname;
+  const all = host.split(".").filter((l) => l !== "www");
+  // gov.uk is all generic, and named "GOV.UK".
+  const labels = (all.some((l) => !NOT_NAMES.has(l)) ? all.filter((l) => l.length > 1 && !NOT_NAMES.has(l)) : all).map(squash);
+  const matches = (part) => {
+    const p = squash(part);
+    return labels.some((l) => p === l || (p.length >= 4 && (p.includes(l) || l.includes(p))));
+  };
+  const parts = title.split(/\s+[|·•–—-]\s+|:\s+/).map((p) => p.trim()).filter(Boolean);
+  const found = parts.find((p) => p.split(/\s+/).length <= 4 && matches(p));
+  if (found) return found;
+  const name = all.filter((l) => l.length > 1 && !NOT_SITES.has(l)).at(-1) ?? all.join(".");
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 // The prompt format Firefox's own smart tab groups use with Mozilla/smart-tab-topic.
 export function topicPrompt(titles, keywords) {
   return `Topic from keywords: ${keywords.join(", ")}. titles: \n${titles.join(" \n")}`;

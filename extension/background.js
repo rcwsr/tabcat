@@ -6,6 +6,7 @@ import {
   isThin,
   nameCandidates,
   namingInputs,
+  siteName,
   tabText,
   topicPrompt,
   withPageInfo,
@@ -53,17 +54,20 @@ function isOrganisable(tab) {
 
 const isGrouped = (tab) => tab.groupId !== undefined && tab.groupId !== -1;
 
-// groups: [{ title, tabIds, groupId? }]. Without a groupId, a group in this window with the
+// groups: [{ title, tabIds, groupId?, siteNamed? }]. Without a groupId, a group in this window with the
 // same title is reused, otherwise a new one is made.
 async function applyGroups(windowId, groups) {
-  for (const { title, tabIds, groupId } of groups) {
+  for (const { title, tabIds, groupId, siteNamed } of groups) {
     // Look again each time: moving a group's last tab out closes that group.
     const existing = await browser.tabGroups.query({ windowId });
     const targetId = groupId ?? existing.find((g) => g.title === title)?.id;
     const id = await browser.tabs.group(
       targetId === undefined ? { tabIds, createProperties: { windowId } } : { tabIds, groupId: targetId },
     );
-    if (targetId === undefined) await browser.tabGroups.update(id, { title });
+    if (targetId === undefined) {
+      await browser.tabGroups.update(id, { title });
+      if (siteNamed) await setSiteNamed(id, title);
+    } else await renameIfOutgrown(id);
   }
 }
 
@@ -198,7 +202,7 @@ async function organiseAutomatically(windowId, tabs, settings) {
   const taken = new Set(existing.map((g) => g.title));
   for (const ix of made) {
     const members = ix.map((i) => tabs[i]);
-    groups.push({ title: await nameGroup(members, taken, settings, progress), tabIds: members.map((t) => t.id) });
+    groups.push({ ...(await nameGroup(members, taken, settings, progress)), tabIds: members.map((t) => t.id) });
   }
 
   await applyGroups(windowId, groups);
@@ -206,23 +210,58 @@ async function organiseAutomatically(windowId, tabs, settings) {
   return summarise(groups, skipped);
 }
 
-// A name for a new group of these tabs, from the topic model (or the AI service, if it's
-// set to name groups), that isn't in `taken` (the window's group titles; the new name is
-// added). An unrelated group shouldn't get folded into an existing one just because the
-// names match. Both are given the pages' descriptions and keywords as well as the titles.
+// A name for a new group of these tabs that isn't in `taken` (the window's group titles; the
+// new name is added). An unrelated group shouldn't get folded into an existing one just
+// because the names match. Resolves to { title, siteNamed }.
+// - With the AI service set to name groups, it names them.
+// - Otherwise a group of one page (or copies of it) is named after its site (siteNamed);
+//   it's named again when a different page joins (see renameIfOutgrown).
+// - Otherwise the topic model names it.
+// The AI service and the topic model are given the pages' descriptions and keywords as well
+// as the titles.
 async function nameGroup(tabs, taken, settings, onProgress) {
   const pages = await Promise.all(
     tabs.map(async (t) => ({ title: t.title ?? "", ...describeTab(t), ...(await pageInfoIfLoaded(t)) })),
   );
   const { lines, keywords } = namingInputs(pages);
-  const suggestion = settings.nameWithAi
-    ? parseName(await chat(settings, namingMessages(pages)))
-    : await topic(topicPrompt(lines, keywords), onProgress);
-  const hosts = tabs.map((t) => new URL(t.url).hostname);
-  const base = nameCandidates(suggestion, keywords, hosts)[0] ?? "Tabs";
+  const siteNamed = !settings.nameWithAi && lines.length === 1;
+  let base;
+  if (siteNamed) base = siteName(tabs[0].title ?? "", tabs[0].url);
+  else {
+    const suggestion = settings.nameWithAi
+      ? parseName(await chat(settings, namingMessages(pages)))
+      : await topic(topicPrompt(lines, keywords), onProgress);
+    const hosts = tabs.map((t) => new URL(t.url).hostname);
+    base = nameCandidates(suggestion, keywords, hosts)[0] ?? "Tabs";
+  }
   let title = base;
   for (let n = 2; taken.has(title); n++) title = `${base} ${n}`;
   taken.add(title);
+  return { title, siteNamed };
+}
+
+// Groups named after a page's site, until they're named again: { groupId: title }.
+async function setSiteNamed(groupId, title) {
+  const named = await sessionGet("siteNamed", {});
+  if (title) named[groupId] = title;
+  else delete named[groupId];
+  await browser.storage.session.set({ siteNamed: named });
+}
+
+// After tabs join a group: if it was named after its one page's site and now has a different
+// page too, names it again from all its tabs. Not if you've renamed it. Returns the new name.
+async function renameIfOutgrown(groupId) {
+  const named = (await sessionGet("siteNamed", {}))[groupId];
+  if (!named) return;
+  const group = await browser.tabGroups.get(groupId);
+  const tabs = await browser.tabs.query({ windowId: group.windowId });
+  const members = tabs.filter((t) => t.groupId === groupId);
+  if (group.title === named && new Set(members.map((t) => t.title)).size < 2) return;
+  await setSiteNamed(groupId, null);
+  if (group.title !== named) return;
+  const others = (await browser.tabGroups.query({ windowId: group.windowId })).filter((g) => g.id !== groupId);
+  const { title } = await nameGroup(members, new Set(others.map((g) => g.title)), await getSettings());
+  await browser.tabGroups.update(groupId, { title });
   return title;
 }
 
@@ -426,7 +465,7 @@ async function autoTarget(tab, settings) {
   if (cluster.length < 2 && !settings.newGroupForLoneTabs) return null;
   const members = cluster.map((i) => tabs[i]);
   const taken = new Set((await browser.tabGroups.query({ windowId: tab.windowId })).map((g) => g.title));
-  return { title: await nameGroup(members, taken, settings), tabs: members };
+  return { ...(await nameGroup(members, taken, settings)), tabs: members };
 }
 
 // Categories mode: the category's group, made if it doesn't exist yet.
@@ -438,14 +477,17 @@ async function categoryFor(tab, settings) {
   return { groupId: group?.id, title };
 }
 
-// target: { groupId, title } to join a group, or { title, tabs } for a new group of those
+// target: { groupId, title } to join a group, or { title, tabs, siteNamed } for a new group of those
 // tabs (just this one if tabs is missing).
-async function moveTab(tab, { groupId, title, tabs = [tab] }) {
+async function moveTab(tab, { groupId, title, tabs = [tab], siteNamed }) {
   const tabIds = tabs.map((t) => t.id);
   const id = await browser.tabs.group(
     groupId === undefined ? { tabIds, createProperties: { windowId: tab.windowId } } : { tabIds, groupId },
   );
-  if (groupId === undefined) await browser.tabGroups.update(id, { title });
+  if (groupId === undefined) {
+    await browser.tabGroups.update(id, { title });
+    if (siteNamed) await setSiteNamed(id, title);
+  } else title = (await renameIfOutgrown(id)) ?? title;
   flash(id);
   const name = `“${tab.title ?? ""}”`;
   const others = tabs.length - 1;
