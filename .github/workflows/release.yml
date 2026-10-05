@@ -1,0 +1,51 @@
+name: Release
+
+# Builds the add-on package for addons.mozilla.org, and a copy of the source for its reviewers.
+# - Push a tag like v0.1.0 (matching the version in extension/manifest.json) to make a
+#   GitHub release with both files attached.
+# - Or run it by hand (Actions → Release → Run workflow) to get them as a download from the run.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # Also copies the model runtime into extension/vendor/ (postinstall).
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - name: Check the tag matches the manifest's version
+        if: github.ref_type == 'tag'
+        run: |
+          version=$(node -p 'require("./extension/manifest.json").version')
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match manifest version $version"
+            exit 1
+          fi
+      - name: Build
+        run: |
+          version=$(node -p 'require("./extension/manifest.json").version')
+          npm run build
+          git archive --format=zip -o "web-ext-artifacts/tabcat-$version-source.zip" HEAD
+          ls -l web-ext-artifacts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tabcat
+          path: web-ext-artifacts/*.zip
+      - name: Make the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" web-ext-artifacts/*.zip --title "Tabcat $GITHUB_REF_NAME" --generate-notes
