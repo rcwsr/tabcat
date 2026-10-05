@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tabcat",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Sorts your tabs into groups automatically, on your computer.",
   "icons": {
     "48": "icons/tabcat.svg",
