@@ -58,9 +58,9 @@ test("AI service", { timeout: 300_000 }, async (t) => {
     // Each line of tabs in the prompt starts "- ".
     const tabCount = (request) => lastMessage(request).split("\n").filter((l) => l.startsWith("- ")).length;
     ff.aiReply = (request) => (tabCount(request) === 1 ? "Personal Email" : "Email");
-    const [personal] = await ff.openTabs([["Inbox - robincawser@gmail.com - Gmail", "mail.google.com/mail/u/0/"]]);
+    const [personal] = await ff.openTabs([["Inbox - sam.jones@gmail.com - Gmail", "mail.google.com/mail/u/0/"]]);
     await waitForLayout(ff, (l) => l[personal] === "Personal Email", "the inbox to get a group");
-    const [work] = await ff.openTabs([["Inbox - robin@cwsr.dev - Cwsr.dev Mail", "mail.google.com/mail/u/1/"]]);
+    const [work] = await ff.openTabs([["Inbox - sam@example.com - Example Mail", "mail.google.com/mail/u/1/"]]);
     await waitForLayout(ff, (l) => l[work] === "Email" && l[personal] === "Email", "the work inbox to join and the group to be renamed");
   });
 

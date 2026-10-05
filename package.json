@@ -2,6 +2,7 @@
   "name": "tabcat",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Firefox extension that sorts open tabs into tab groups",
   "type": "module",
   "scripts": {
