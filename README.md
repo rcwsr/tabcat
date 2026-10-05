@@ -1,3 +1,5 @@
+<img src="extension/icons/tabcat.svg" width="96" alt="Tabcat icon">
+
 # Tabcat
 
 A Firefox extension that puts your tabs into tab groups and names them. It runs on your
