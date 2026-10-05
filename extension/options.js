@@ -30,6 +30,7 @@ const aiSettings = document.getElementById("aiSettings");
 const apiUrl = document.getElementById("apiUrl");
 const apiKey = document.getElementById("apiKey");
 const apiModel = document.getElementById("apiModel");
+const apiPrompt = document.getElementById("apiPrompt");
 
 // Lets Tabcat show "Moved … — Undo" in the page you're on. Granted at install; you can turn
 // it off in about:addons.
@@ -103,6 +104,7 @@ function render(settings) {
   apiUrl.value = settings.apiUrl;
   apiKey.value = settings.apiKey;
   apiModel.value = settings.apiModel;
+  apiPrompt.value = settings.apiPrompt;
   groupingThreshold.value = settings.groupingThreshold;
   groupingThresholdValue.textContent = Number(settings.groupingThreshold).toFixed(2);
   // A disabled option can't stay selected, so fall back to the bundled model.
@@ -122,7 +124,8 @@ function collect() {
   const settings = { mode: selectedMode(), keepOrganised: keepOrganised.checked,
     newGroupForLoneTabs: newGroupForLoneTabs.checked, nameWithAi: nameWithAi.checked,
     renameGrowingGroups: renameGrowingGroups.checked,
-    groupingThreshold: Number(groupingThreshold.value), provider: provider.value };
+    groupingThreshold: Number(groupingThreshold.value), provider: provider.value,
+    apiPrompt: apiPrompt.value.trim() };
   if (provider.value === "laya") {
     let url;
     try {

@@ -57,15 +57,21 @@ export async function chat({ apiUrl, apiKey, apiModel }, messages) {
 const describe = (tabs) =>
   tabs.map(({ title, url, description }) => `- ${title} (${url})${description ? `\n  ${description.slice(0, 300)}` : ""}`).join("\n");
 
-export function namingMessages(tabs) {
+// The user's own instructions (apiPrompt in Settings), added after Tabcat's.
+const withInstructions = (system, instructions) =>
+  instructions?.trim() ? `${system}\n\nThe user's instructions:\n${instructions.trim()}` : system;
+
+export function namingMessages(tabs, instructions) {
   return [
     {
       role: "system",
-      content:
+      content: withInstructions(
         "You name groups of browser tabs. Reply with the name only: one to three words, " +
-        "title case, saying what the tabs are about or for (like Trip to Lisbon, Rust, " +
-        "House Hunting, Shopping). No quotes or punctuation. Don't use email addresses, " +
-        "people's names, numbers or codes from the titles.",
+          "title case, saying what the tabs are about or for (like Trip to Lisbon, Rust, " +
+          "House Hunting, Shopping). No quotes or punctuation. Don't use email addresses, " +
+          "people's names, numbers or codes from the titles.",
+        instructions,
+      ),
     },
     { role: "user", content: `Tabs in the group:\n${describe(tabs)}` },
   ];
@@ -79,14 +85,16 @@ export function parseName(text) {
 }
 
 // categories: { key: what belongs }.
-export function categoryMessages(tab, categories) {
+export function categoryMessages(tab, categories, instructions) {
   const list = Object.entries(categories).map(([key, criteria]) => `- ${key}: ${criteria}`).join("\n");
   return [
     {
       role: "system",
-      content:
+      content: withInstructions(
         "You sort browser tabs into categories. Reply with the category's name only, exactly " +
-        "as listed, or none if no category clearly fits.\n\nCategories:\n" + list,
+          "as listed, or none if no category clearly fits.\n\nCategories:\n" + list,
+        instructions,
+      ),
     },
     { role: "user", content: `Tab:\n${describe([tab])}` },
   ];

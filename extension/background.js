@@ -232,7 +232,7 @@ async function nameGroup(tabs, taken, settings, onProgress) {
   if (onePage && !settings.nameWithAi) base = siteName(pages[0].site, tabs[0].url);
   else {
     const suggestion = settings.nameWithAi
-      ? parseName(await chat(settings, namingMessages(pages)))
+      ? parseName(await chat(settings, namingMessages(pages, settings.apiPrompt)))
       : await topic(topicPrompt(lines, keywords), onProgress);
     const hosts = tabs.map((t) => new URL(t.url).hostname);
     base = nameCandidates(suggestion, keywords, hosts)[0] ?? "Tabs";

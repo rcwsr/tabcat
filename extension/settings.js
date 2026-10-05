@@ -30,6 +30,8 @@ export const DEFAULT_SETTINGS = {
   apiUrl: "",
   apiKey: "",
   apiModel: "",
+  // Extra instructions for the AI service, added after Tabcat's own (like "Name groups in French").
+  apiPrompt: "",
   // Categories mode: "tabcat" (bundled on-device model), "firefox" (Firefox's built-in AI),
   // "laya" or "ai" (the AI service above).
   provider: "tabcat",

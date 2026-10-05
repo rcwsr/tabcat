@@ -78,7 +78,7 @@ export class AiServiceProvider {
     const answers = {};
     for (const [name, { type, criteria }] of Object.entries(questions)) {
       if (type !== "choice") throw new Error(`The AI service can't answer "${type}" questions.`);
-      const choice = parseCategory(await chat(this.settings, categoryMessages(state, criteria)), criteria);
+      const choice = parseCategory(await chat(this.settings, categoryMessages(state, criteria, this.settings.apiPrompt)), criteria);
       answers[name] = { choice, probabilities: choice ? { [choice]: 1 } : {} };
     }
     return { answers };

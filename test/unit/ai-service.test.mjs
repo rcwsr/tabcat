@@ -28,6 +28,13 @@ test("the prompts include each tab's title, address and description", () => {
   assert.match(user.content, /Hotels in Alfama/);
 });
 
+test("the user's instructions come after Tabcat's, if there are any", () => {
+  const tabs = [{ title: "Hotels in Alfama", url: "www.booking.com/alfama" }];
+  assert.match(namingMessages(tabs, " Name groups in French. ")[0].content, /\n\nThe user's instructions:\nName groups in French\.$/);
+  assert.match(categoryMessages(tabs[0], CATEGORIES, "Football is news")[0].content, /- Gaming: Video games\n\nThe user's instructions:\nFootball is news$/);
+  assert.equal(namingMessages(tabs, "  ")[0].content, namingMessages(tabs)[0].content);
+});
+
 test("checkService wants https, except on this computer, and a model", () => {
   assert.deepEqual(checkService({ url: " https://api.openai.com/v1/ ", key: " sk ", model: "gpt" }), {
     url: "https://api.openai.com/v1",
