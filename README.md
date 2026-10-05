@@ -88,6 +88,8 @@ Open them from the toolbar popup → **Settings**. You can:
 - **Send tab data** (asked only when you set up a remote AI service).
 - **Firefox's built-in AI** (asked only if you choose it).
 
+See the [privacy policy](PRIVACY.md).
+
 ## Installing
 
 Firefox 142 or later. Release Firefox only installs signed add-ons, so use a build signed by
@@ -133,8 +135,10 @@ extension/
   options.*       the Settings page
   popup.*         the toolbar popup
   settings.js     default settings and categories
+  icons/          the toolbar and add-on icon
 scripts/vendor.mjs  copies the model runtime into extension/vendor/ (not committed)
 test/             unit, model and browser tests, and labelled tabs
+store/            text and icon for the addons.mozilla.org listing
 ```
 
 ## Licence

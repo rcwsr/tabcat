@@ -3,6 +3,10 @@
   "name": "Tabcat",
   "version": "0.1.0",
   "description": "Sorts your tabs into groups automatically, on your computer.",
+  "icons": {
+    "48": "icons/tabcat.svg",
+    "96": "icons/tabcat.svg"
+  },
   "browser_specific_settings": {
     "gecko": {
       "id": "tabcat@cwsr.dev",
@@ -36,6 +40,7 @@
   },
   "action": {
     "default_title": "Tabcat",
+    "default_icon": "icons/tabcat.svg",
     "default_popup": "popup.html"
   },
   "options_ui": {
