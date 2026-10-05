@@ -7,7 +7,8 @@
       body { font: 14px system-ui, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
       fieldset { border: 1px solid #ccc; border-radius: 6px; margin-bottom: 16px; padding: 12px 16px; }
       label { display: block; margin: 8px 0 4px; }
-      input[type="text"], input[type="url"], input[type="password"], select { font: inherit; padding: 4px 6px; width: 100%; box-sizing: border-box; }
+      input[type="text"], input[type="url"], input[type="password"], select, #apiPrompt { font: inherit; padding: 4px 6px; width: 100%; box-sizing: border-box; }
+      #apiPrompt { resize: vertical; }
       .hint { color: #666; font-size: 12px; margin: 4px 0 0; }
       .choice { display: block; margin: 6px 0; }
       .choice input { margin-right: 6px; }
@@ -84,6 +85,9 @@
         <p class="hint">Not needed for Ollama or LM Studio. Kept in this Firefox profile and only sent to the address above.</p>
         <label for="apiModel">Model</label>
         <input id="apiModel" type="text" placeholder="gpt-4.1-mini" />
+        <label for="apiPrompt">Instructions (optional)</label>
+        <textarea id="apiPrompt" rows="3" placeholder="Name groups in French. Put anything about football in news."></textarea>
+        <p class="hint">Added to what Tabcat asks the service, both when naming groups and when sorting tabs into categories.</p>
       </fieldset>
 
       <fieldset id="categorySettings">

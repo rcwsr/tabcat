@@ -135,6 +135,7 @@ test("settings page", { timeout: 120_000 }, async (t) => {
     assert.match((await save()).text, /must start with https/);
     await page.$eval("#apiUrl", (e) => (e.value = "https://api.example.com/v1/"));
     await page.type("#apiKey", "sk-test");
+    await page.type("#apiPrompt", " Name groups in French. ");
     await page.evaluate(() => sessionStorage.setItem("deny", "1"));
     assert.deepEqual(await save(), { error: true, text: "Not saved: Tabcat needs your permission to send tab data to your AI service." });
     assert.equal((await stored()).apiUrl, "http://localhost:11434/v1");
@@ -142,7 +143,8 @@ test("settings page", { timeout: 120_000 }, async (t) => {
     assert.deepEqual(await save(), { error: false, text: "Saved." });
     assert.equal(await page.evaluate((k) => sessionStorage.getItem(k), SEND), "1");
     const s = await stored();
-    assert.deepEqual([s.nameWithAi, s.apiUrl, s.apiKey, s.apiModel], [true, "https://api.example.com/v1", "sk-test", "llama3.2"]);
+    assert.deepEqual([s.nameWithAi, s.apiUrl, s.apiKey, s.apiModel, s.apiPrompt],
+      [true, "https://api.example.com/v1", "sk-test", "llama3.2", "Name groups in French."]);
 
     await page.click("#nameWithAi");
     assert.equal(await hidden("#aiSettings"), true);
