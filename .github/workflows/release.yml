@@ -2,7 +2,8 @@ name: Release
 
 # Builds the add-on package for addons.mozilla.org, and a copy of the source for its reviewers.
 # - Push a tag like v0.1.0 (matching the version in extension/manifest.json) to make a
-#   GitHub release with both files attached.
+#   GitHub release with both files attached, and submit the version to addons.mozilla.org
+#   (with the repo secrets AMO_API_KEY and AMO_API_SECRET set; skipped without them).
 # - Or run it by hand (Actions → Release → Run workflow) to get them as a download from the run.
 on:
   push:
@@ -49,3 +50,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" web-ext-artifacts/*.zip --title "Tabcat $GITHUB_REF_NAME" --generate-notes
+      # Uploads the version to the store listing, with the source for its reviewers. Mozilla
+      # then checks and signs it as usual; this doesn't wait for that.
+      - name: Submit to addons.mozilla.org
+        if: github.ref_type == 'tag'
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        run: |
+          if [ -z "$WEB_EXT_API_KEY" ]; then
+            echo "::notice::No AMO_API_KEY secret, so not submitted to addons.mozilla.org"
+            exit 0
+          fi
+          version=$(node -p 'require("./extension/manifest.json").version')
+          npx web-ext sign -s extension --channel=listed --approval-timeout=0 \
+            --upload-source-code "web-ext-artifacts/tabcat-$version-source.zip"

@@ -107,9 +107,9 @@ npm run build    # packages the extension into web-ext-artifacts/
 ```
 
 To release: raise `version` in `extension/manifest.json`, then push a tag to match
-(`git tag v0.2.0 && git push origin v0.2.0`). GitHub builds the add-on zip and a source zip
-and attaches them to a release. Upload the add-on zip to addons.mozilla.org, and the source
-zip if the reviewers ask for it. To build without a release: Actions → Release → Run workflow.
+(`git tag v0.2.0 && git push origin v0.2.0`). GitHub builds the add-on zip and a source zip,
+attaches them to a release, and submits the new version to addons.mozilla.org (if the
+repo secrets `AMO_API_KEY` and `AMO_API_SECRET` are set). To build without a release: Actions → Release → Run workflow.
 
 To load it by hand: `about:debugging` → This Firefox → Load Temporary Add-on →
 `extension/manifest.json` (after `npm install`).
