@@ -136,3 +136,7 @@ extension/
 scripts/vendor.mjs  copies the model runtime into extension/vendor/ (not committed)
 test/             unit, model and browser tests, and labelled tabs
 ```
+
+## Licence
+
+[MIT](LICENSE)
