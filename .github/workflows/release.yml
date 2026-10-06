@@ -2,50 +2,109 @@ name: Release
 
 # Builds the add-on package for addons.mozilla.org, and a copy of the source for its reviewers.
 # - Push a tag like v0.1.0 (matching the version in extension/manifest.json) to make a
-#   GitHub release with both files attached.
-# - Or run it by hand (Actions → Release → Run workflow) to get them as a download from the run.
+#   GitHub release with both files attached, and submit the version to the store listing
+#   (with the repo secrets AMO_API_KEY and AMO_API_SECRET set; skipped without them).
+# - Or run it by hand (Actions → Release → Run workflow) and choose:
+#   - "build only": the files as a download from the run.
+#   - "self-distributed": Mozilla signs the version without listing it (no review queue),
+#     and a GitHub pre-release vX.Y.Z gets the signed .xpi to install. Version numbers are
+#     shared with the store, so raise the version first.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: What to do with the build
+        type: choice
+        options: [build only, self-distributed]
+        default: build only
 
 permissions:
   contents: write
 
+env:
+  SELF_DISTRIBUTED: ${{ github.event_name == 'workflow_dispatch' && inputs.publish == 'self-distributed' }}
+
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+      - name: Get the version
+        run: echo "VERSION=$(node -p 'require("./extension/manifest.json").version')" >> "$GITHUB_ENV"
+      - name: Check the tag matches the manifest's version
+        if: github.ref_type == 'tag'
+        run: |
+          if [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match manifest version $VERSION"
+            exit 1
+          fi
+      - name: Check the version hasn't been released
+        if: env.SELF_DISTRIBUTED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "::error::v$VERSION is already released. Raise the version in extension/manifest.json first."
+            exit 1
+          fi
       # Also copies the model runtime into extension/vendor/ (postinstall).
       - run: npm ci
       - run: npm run lint
       - run: npm test
-      - name: Check the tag matches the manifest's version
-        if: github.ref_type == 'tag'
-        run: |
-          version=$(node -p 'require("./extension/manifest.json").version')
-          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME doesn't match manifest version $version"
-            exit 1
-          fi
       - name: Build
         run: |
-          version=$(node -p 'require("./extension/manifest.json").version')
           npm run build
-          git archive --format=zip -o "web-ext-artifacts/tabcat-$version-source.zip" HEAD
+          git archive --format=zip -o "web-ext-artifacts/tabcat-$VERSION-source.zip" HEAD
           ls -l web-ext-artifacts
       - uses: actions/upload-artifact@v4
         with:
           name: tabcat
           path: web-ext-artifacts/*.zip
+
       - name: Make the release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" web-ext-artifacts/*.zip --title "Tabcat $GITHUB_REF_NAME" --generate-notes
+      # Uploads the version to the store listing, with the source for its reviewers. Mozilla
+      # then checks and signs it as usual; this doesn't wait for that.
+      - name: Submit to addons.mozilla.org
+        if: github.ref_type == 'tag'
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        run: |
+          if [ -z "$WEB_EXT_API_KEY" ]; then
+            echo "::notice::No AMO_API_KEY secret, so not submitted to addons.mozilla.org"
+            exit 0
+          fi
+          npx web-ext sign -s extension --channel=listed --approval-timeout=0 \
+            --upload-source-code "web-ext-artifacts/tabcat-$VERSION-source.zip"
+
+      # Self-distributed: signed straight away, and the .xpi downloaded into web-ext-artifacts/.
+      - name: Sign for self-distribution
+        if: env.SELF_DISTRIBUTED == 'true'
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        run: |
+          npx web-ext sign -s extension --channel=unlisted \
+            --upload-source-code "web-ext-artifacts/tabcat-$VERSION-source.zip"
+          ls -l web-ext-artifacts
+      # The release's tag is made with GitHub's own token, which doesn't start workflows, so
+      # it isn't also submitted to the store listing.
+      - name: Make the self-distributed release
+        if: env.SELF_DISTRIBUTED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" web-ext-artifacts/*.xpi web-ext-artifacts/*.zip \
+            --target "$GITHUB_SHA" --prerelease --title "Tabcat v$VERSION (self-distributed)" --generate-notes \
+            --notes "Signed by Mozilla for self-distribution, not on the store. To install, open the .xpi in Firefox."
