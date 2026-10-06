@@ -111,6 +111,11 @@ To release: raise `version` in `extension/manifest.json`, then push a tag to mat
 attaches them to a release, and submits the new version to addons.mozilla.org (if the
 repo secrets `AMO_API_KEY` and `AMO_API_SECRET` are set). To build without a release: Actions → Release → Run workflow.
 
+To get a signed version for yourself without waiting for the store's review: raise the
+version, then Actions → Release → Run workflow → "self-distributed". Mozilla signs it
+without listing it, and a GitHub pre-release gets the `.xpi` to install. The store only takes
+versions higher than any used before, so this version number can't go to the store too.
+
 To load it by hand: `about:debugging` → This Firefox → Load Temporary Add-on →
 `extension/manifest.json` (after `npm install`).
 
