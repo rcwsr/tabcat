@@ -1,4 +1,6 @@
-<img src="extension/icons/tabcat.svg" width="96" alt="Tabcat icon">
+<p align="center">
+  <img src="docs/header.jpg" alt="Tabcat: AI-powered tab grouping">
+</p>
 
 # Tabcat
 
