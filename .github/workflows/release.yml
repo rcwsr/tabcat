@@ -1,14 +1,16 @@
 name: Release
 
 # Builds the add-on package for addons.mozilla.org, and a copy of the source for its reviewers.
-# - Push a tag like v0.1.0 (matching the version in extension/manifest.json) to make a
-#   GitHub release with both files attached, and submit the version to the store listing
+# - Push a tag like v0.1.0 (matching the version in extension/manifest.json) to release it
+#   self-distributed: Mozilla signs the version without listing it (no review queue), and a
+#   GitHub pre-release gets the signed .xpi to install, along with both files.
+#   With the repo variable AMO_CHANNEL set to "listed", a tag goes to the store instead: a
+#   GitHub release gets both files, and the version is submitted to the store listing
 #   (with the repo secrets AMO_API_KEY and AMO_API_SECRET set; skipped without them).
 # - Or run it by hand (Actions → Release → Run workflow) and choose:
 #   - "build only": the files as a download from the run.
-#   - "self-distributed": Mozilla signs the version without listing it (no review queue),
-#     and a GitHub pre-release vX.Y.Z gets the signed .xpi to install. Version numbers are
-#     shared with the store, so raise the version first.
+#   - "self-distributed": as a tag does by default, and makes the tag vX.Y.Z. Version
+#     numbers are shared with the store, so raise the version first.
 on:
   push:
     tags: ["v*"]
@@ -24,7 +26,8 @@ permissions:
   contents: write
 
 env:
-  SELF_DISTRIBUTED: ${{ github.event_name == 'workflow_dispatch' && inputs.publish == 'self-distributed' }}
+  # By hand when chosen, and for a tag unless AMO_CHANNEL is "listed".
+  SELF_DISTRIBUTED: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish == 'self-distributed') || (github.event_name == 'push' && vars.AMO_CHANNEL != 'listed') }}
 
 jobs:
   release:
@@ -69,14 +72,14 @@ jobs:
           path: web-ext-artifacts/*.zip
 
       - name: Make the release
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && env.SELF_DISTRIBUTED != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" web-ext-artifacts/*.zip --title "Tabcat $GITHUB_REF_NAME" --generate-notes
       # Uploads the version to the store listing, with the source for its reviewers. Mozilla
       # then checks and signs it as usual; this doesn't wait for that.
       - name: Submit to addons.mozilla.org
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && env.SELF_DISTRIBUTED != 'true'
         env:
           WEB_EXT_API_KEY: ${{ secrets.AMO_API_KEY }}
           WEB_EXT_API_SECRET: ${{ secrets.AMO_API_SECRET }}
@@ -98,8 +101,8 @@ jobs:
           npx web-ext sign -s extension --channel=unlisted \
             --upload-source-code "web-ext-artifacts/tabcat-$VERSION-source.zip"
           ls -l web-ext-artifacts
-      # The release's tag is made with GitHub's own token, which doesn't start workflows, so
-      # it isn't also submitted to the store listing.
+      # Run by hand, the release's tag is made with GitHub's own token, which doesn't start
+      # workflows, so this doesn't run again for it.
       - name: Make the self-distributed release
         if: env.SELF_DISTRIBUTED == 'true'
         env:
