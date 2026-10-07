@@ -1,7 +1,7 @@
 # Store listing (addons.mozilla.org)
 
 What to paste into each field when submitting Tabcat. Icon: `icon-128.png` in this folder
-(the add-on itself uses `extension/icons/tabcat.svg`).
+(the add-on itself uses the PNGs in `extension/icons/`).
 
 ## Name
 
