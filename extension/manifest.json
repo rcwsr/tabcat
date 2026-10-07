@@ -4,8 +4,11 @@
   "version": "0.1.2",
   "description": "Sorts your tabs into groups automatically, on your computer.",
   "icons": {
-    "48": "icons/tabcat.svg",
-    "96": "icons/tabcat.svg"
+    "16": "icons/tabcat-16.png",
+    "32": "icons/tabcat-32.png",
+    "48": "icons/tabcat-48.png",
+    "96": "icons/tabcat-96.png",
+    "128": "icons/tabcat-128.png"
   },
   "browser_specific_settings": {
     "gecko": {
@@ -40,7 +43,10 @@
   },
   "action": {
     "default_title": "Tabcat",
-    "default_icon": "icons/tabcat.svg",
+    "default_icon": {
+      "16": "icons/tabcat-16.png",
+      "32": "icons/tabcat-32.png"
+    },
     "default_popup": "popup.html"
   },
   "options_ui": {
