@@ -3,7 +3,7 @@ name: Release
 # Builds the add-on package for addons.mozilla.org, and a copy of the source for its reviewers.
 # - Push a tag like v0.1.0 (matching the version in extension/manifest.json) to release it
 #   self-distributed: Mozilla signs the version without listing it (no review queue), and a
-#   GitHub pre-release gets the signed .xpi to install, along with both files.
+#   GitHub release gets the signed tabcat.xpi to install, along with both files.
 #   With the repo variable AMO_CHANNEL set to "listed", a tag goes to the store instead: a
 #   GitHub release gets both files, and the version is submitted to the store listing
 #   (with the repo secrets AMO_API_KEY and AMO_API_SECRET set; skipped without them).
@@ -92,6 +92,7 @@ jobs:
             --upload-source-code "web-ext-artifacts/tabcat-$VERSION-source.zip"
 
       # Self-distributed: signed straight away, and the .xpi downloaded into web-ext-artifacts/.
+      # It's renamed tabcat.xpi so the README can link to the latest release's copy.
       - name: Sign for self-distribution
         if: env.SELF_DISTRIBUTED == 'true'
         env:
@@ -100,6 +101,7 @@ jobs:
         run: |
           npx web-ext sign -s extension --channel=unlisted \
             --upload-source-code "web-ext-artifacts/tabcat-$VERSION-source.zip"
+          mv web-ext-artifacts/*.xpi web-ext-artifacts/tabcat.xpi
           ls -l web-ext-artifacts
       # Run by hand, the release's tag is made with GitHub's own token, which doesn't start
       # workflows, so this doesn't run again for it.
@@ -109,5 +111,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "v$VERSION" web-ext-artifacts/*.xpi web-ext-artifacts/*.zip \
-            --target "$GITHUB_SHA" --prerelease --title "Tabcat v$VERSION (self-distributed)" --generate-notes \
+            --target "$GITHUB_SHA" --title "Tabcat v$VERSION (self-distributed)" --generate-notes \
             --notes "Signed by Mozilla for self-distribution, not on the store. To install, open the .xpi in Firefox."

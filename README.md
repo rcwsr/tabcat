@@ -94,8 +94,10 @@ See the [privacy policy](PRIVACY.md).
 
 ## Installing
 
-Firefox 142 or later. Release Firefox only installs signed add-ons, so use a build signed by
-addons.mozilla.org, or load it yourself as below.
+Firefox 142 or later. Download **[tabcat.xpi](https://github.com/rcwsr/tabcat/releases/latest/download/tabcat.xpi)**
+from the latest release (signed by Mozilla), then drag it onto a Firefox window, or open
+`about:addons` → ⚙ → Install Add-on From File. It doesn't update itself: download it again
+for a newer version. Or load it yourself as below.
 
 ## Development
 
@@ -108,8 +110,8 @@ npm run build    # packages the extension into web-ext-artifacts/
 
 To release: raise `version` in `extension/manifest.json`, then push a tag to match
 (`git tag v0.2.0 && git push origin v0.2.0`). GitHub builds the add-on zip and a source zip,
-Mozilla signs the version without listing it (no store review), and a GitHub pre-release
-gets the signed `.xpi` to install, along with both zips. This needs the repo secrets
+Mozilla signs the version without listing it (no store review), and a GitHub release gets
+the signed `tabcat.xpi` to install, along with both zips. This needs the repo secrets
 `AMO_API_KEY` and `AMO_API_SECRET`. You can do the same without pushing a tag: Actions →
 Release → Run workflow → "self-distributed". To build without a release: Run workflow →
 "build only".
