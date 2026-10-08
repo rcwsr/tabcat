@@ -3,40 +3,61 @@
   <head>
     <meta charset="utf-8" />
     <title>Tabcat settings</title>
+    <link rel="stylesheet" href="theme.css" />
     <style>
-      body { font: 14px/1.45 system-ui, sans-serif; max-width: 680px; margin: 24px auto; padding: 0 16px; color: #15141a; }
-      h1 { font-size: 22px; margin: 0 0 4px; }
-      .intro { color: #5b5b66; margin: 0 0 16px; }
-      section { border-top: 1px solid #ddd; padding: 16px 0 8px; }
+      body { padding: 0 16px 32px; }
+      .page { max-width: 680px; margin: 0 auto; }
+      h1 { display: flex; align-items: center; gap: 10px; font-size: 22px; margin: 28px 0 6px; }
+      h1 img { width: 32px; height: 32px; }
+      .intro { color: var(--muted); margin: 0 0 20px; }
+      section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; padding: 14px 18px 10px; }
       section[hidden], div[hidden] { display: none; }
-      h2 { font-size: 16px; margin: 0 0 8px; }
-      .optional { font-weight: normal; color: #5b5b66; }
+      h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 4px; }
+      .optional { font-weight: 400; text-transform: none; letter-spacing: 0; }
       label { display: block; margin: 12px 0 4px; font-weight: 500; }
-      label.choice { display: flex; gap: 8px; align-items: baseline; }
-      .hint { color: #5b5b66; font-size: 13px; margin: 2px 0 8px 24px; }
+      label.choice { display: flex; gap: 10px; align-items: center; cursor: pointer; }
+      .hint { color: var(--muted); font-size: 12.5px; margin: 4px 0 8px 46px; }
       .hint.flush { margin-left: 0; }
-      .warning { color: #a4000f; }
-      input[type="text"], input[type="url"], input[type="password"], select, textarea { font: inherit; padding: 4px 6px; box-sizing: border-box; }
-      input[type="text"], input[type="url"], input[type="password"], #apiPrompt, #modelList { width: 100%; }
-      #modelSearch { width: 100%; box-sizing: border-box; margin-bottom: 4px; font: inherit; padding: 4px 6px; }
+      .warning, #testResult.error { color: var(--danger); }
+      input[type="text"], input[type="url"], input[type="password"], input[type="search"], select, textarea {
+        font: inherit; width: 100%; padding: 7px 9px; color: var(--text); background: var(--field);
+        border: 1px solid var(--border); border-radius: 8px;
+      }
+      #modelSearch { margin-bottom: 4px; }
       textarea { resize: vertical; }
-      .slider { display: flex; gap: 8px; align-items: center; color: #5b5b66; font-size: 13px; }
-      .slider input { flex: 1; max-width: 320px; }
-      .category { display: grid; grid-template-columns: 140px 1fr auto; gap: 8px; margin-bottom: 8px; }
-      .category textarea { min-height: 2.2em; }
+      /* On/off switches: the checkbox itself, restyled. */
+      input[type="checkbox"] {
+        appearance: none; flex: none; position: relative; width: 36px; height: 20px; margin: 0;
+        border-radius: 10px; background: var(--border); cursor: pointer; transition: background 0.15s;
+      }
+      input[type="checkbox"]::before {
+        content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+        border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.3); transition: transform 0.15s;
+      }
+      input[type="checkbox"]:checked { background: var(--accent); }
+      input[type="checkbox"]:checked::before { transform: translateX(16px); }
+      .slider { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+      .slider input { flex: 1; max-width: 320px; accent-color: var(--accent); }
+      .category { display: grid; grid-template-columns: 140px 1fr auto; gap: 8px; margin-bottom: 8px; align-items: start; }
+      .category textarea { min-height: 2.4em; }
+      .remove { padding: 6px 10px; color: var(--muted); }
+      .remove:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); }
       .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
-      button { font: inherit; padding: 6px 12px; cursor: pointer; }
-      .remove { padding: 4px 8px; }
-      .actions { display: flex; gap: 8px; align-items: center; border-top: 1px solid #ddd; padding-top: 16px; }
-      #status { color: #5b5b66; }
-      #status.error, #testResult.error { color: #a4000f; }
-      kbd { font: 12px ui-monospace, monospace; border: 1px solid #ccc; border-radius: 3px; padding: 1px 4px; }
+      /* The Save bar is a footer under the scrolling settings, so it never covers a control. */
+      kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; background: var(--field); }
+      body { display: flex; flex-direction: column; height: 100vh; padding: 0; }
+      form { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+      .scroll { flex: 1; overflow-y: auto; padding: 0 16px 8px; }
+      .actions { background: var(--surface); border-top: 1px solid var(--border); padding: 12px 16px; }
+      .actions .page { display: flex; gap: 8px; align-items: center; }
+      #status { flex: 1; min-width: 0; text-align: right; }
     </style>
   </head>
   <body>
-    <h1>Tabcat settings</h1>
-    <p class="intro">Tabcat groups related tabs and names the groups, on this computer. The first time, it downloads two small models (about 80 MB).</p>
     <form id="settings">
+    <div class="scroll"><div class="page">
+    <h1><img src="icons/tabcat-48.png" alt="" />Tabcat settings</h1>
+    <p class="intro">Tabcat groups related tabs and names the groups, on this computer. The first time, it downloads two small models (about 80 MB).</p>
       <section>
         <h2>Grouping</h2>
         <label class="choice"><input type="checkbox" id="keepOrganised" />Group tabs as they load</label>
@@ -103,10 +124,14 @@
         </div>
       </section>
 
+      </div></div>
+
       <div class="actions">
-        <button type="submit">Save</button>
-        <button type="button" id="reset">Reset to defaults</button>
-        <span id="status"></span>
+        <div class="page">
+          <button type="submit" class="primary">Save</button>
+          <button type="button" id="reset">Reset to defaults</button>
+          <span id="status" role="status"></span>
+        </div>
       </div>
     </form>
 
