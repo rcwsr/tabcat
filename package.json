@@ -13,7 +13,8 @@
     "test": "node --test 'test/unit/*.test.mjs'",
     "test:model": "node --test 'test/model/*.test.mjs'",
     "test:browser": "node --test --test-concurrency=1 'test/browser/*.test.mjs'",
-    "test:all": "npm test && npm run test:model && npm run test:browser"
+    "test:all": "npm test && npm run test:model && npm run test:browser",
+    "eval": "node scripts/eval.mjs"
   },
   "devDependencies": {
     "@huggingface/transformers": "4.3.0",

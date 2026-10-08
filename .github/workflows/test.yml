@@ -27,7 +27,7 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run test:model
-      # The runner image ships Firefox. Laya's test skips itself (no layad here).
+      # The runner image ships Firefox.
       - run: firefox --version
       - run: npm run test:browser
         env:

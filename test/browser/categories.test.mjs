@@ -1,79 +1,55 @@
-// Categories mode in real Firefox with each model: Tabcat's bundled one, Firefox's built-in AI
-// and Laya (skipped unless layad is running).
+// Your categories in real Firefox, on this computer: tabs going into the right category or
+// a group of their own, a group named like a category being that category, and your own
+// groups left alone.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_SETTINGS } from "../../extension/settings.js";
+import { EXAMPLE_CATEGORIES } from "../../extension/settings.js";
 import { CATEGORY_TABS } from "../fixtures/tabs.mjs";
 import { launch } from "./firefox.mjs";
 
-const groupTitle = (key) => key.charAt(0).toUpperCase() + key.slice(1);
+const CATEGORY = Object.fromEntries(Object.keys(EXAMPLE_CATEGORIES).map((name) => [name.toLowerCase(), name]));
 
-async function layadRunning() {
-  try {
-    await fetch(DEFAULT_SETTINGS.layaUrl, { signal: AbortSignal.timeout(1000) });
-    return true;
-  } catch {
-    return false;
-  }
-}
+test("categories in Firefox", { timeout: 300_000 }, async (t) => {
+  const ff = await launch();
+  t.after(() => ff.close());
+  const urls = await ff.openTabs(CATEGORY_TABS.map(([, title, url]) => [title, url]));
+  const [first, second] = await ff.organise({ settings: { categories: EXAMPLE_CATEGORIES }, runs: 2 });
+  assert.equal(first.error, undefined);
 
-// Floors sit a little under what each model scored on these tabs. Tabcat's model placed 43
-// (36 right), Firefox's 45 (36 right): same model and weights, but the runtimes differ
-// slightly, which flips tabs near the cut-off. Laya placed 30 (28 right).
-const MODELS = [
-  { provider: "tabcat", floor: { right: 33, precision: 0.75 } },
-  { provider: "firefox", floor: { right: 33, precision: 0.75 }, firefoxML: true },
-  { provider: "laya", floor: { right: 25, precision: 0.8 }, needsLayad: true },
-];
-
-const layouts = {};
-
-for (const { provider, floor, firefoxML, needsLayad } of MODELS) {
-  const skip = needsLayad && !(await layadRunning()) && "layad isn't running";
-  test(`categories mode with ${provider}`, { skip, timeout: 300_000 }, async (t) => {
-    const ff = await launch({ firefoxML });
-    t.after(() => ff.close());
-    const urls = await ff.openTabs(CATEGORY_TABS.map(([, title, url]) => [title, url]));
-    const [first, second] = await ff.organise({ settings: { mode: "categories", provider }, runs: 2 });
-    assert.equal(first.error, undefined);
-
-    const placed = urls.filter((u) => first.layout[u]);
-    const right = urls.filter((u, i) => first.layout[u] === groupTitle(CATEGORY_TABS[i][0]));
-    t.diagnostic(`placed ${placed.length}, ${right.length} right`);
-    assert.ok(right.length >= floor.right, `only ${right.length} placed correctly`);
-    assert.ok(right.length / placed.length >= floor.precision, `precision ${(right.length / placed.length).toFixed(2)}`);
-
-    assert.equal(second.error, undefined);
-    assert.deepEqual(second.layout, first.layout, "second run moved tabs");
-    layouts[provider] = first.layout;
+  await t.test("tabs go into their category or a group of their own, not the wrong category", () => {
+    const inCategory = urls.filter((u) => Object.values(CATEGORY).includes(first.layout[u]));
+    const right = inCategory.filter((u) => first.layout[u] === CATEGORY[CATEGORY_TABS[urls.indexOf(u)][0]]);
+    t.diagnostic(`${inCategory.length} in a category, ${right.length} right`);
+    // Measured in Node: 25 right, none wrong.
+    assert.ok(right.length >= 21, `only ${right.length} right`);
+    assert.ok(inCategory.length - right.length <= 1, `${inCategory.length - right.length} in the wrong category`);
+    assert.ok(urls.every((u) => first.layout[u]), "a tab wasn't grouped");
   });
-}
 
-test("Tabcat's model and Firefox's built-in AI mostly agree", (t) => {
-  if (!layouts.tabcat || !layouts.firefox) return t.skip("needs both runs above");
-  const urls = Object.keys(layouts.tabcat);
-  const same = urls.filter((u) => layouts.firefox[u] === layouts.tabcat[u]).length;
-  t.diagnostic(`${same}/${urls.length} tabs placed the same`);
-  assert.ok(same / urls.length >= 0.85, `only ${same}/${urls.length} tabs placed the same`);
+  await t.test("a second run changes nothing", () => {
+    assert.equal(second.error, undefined);
+    assert.deepEqual(second.layout, first.layout);
+  });
 });
 
-test("categories mode leaves the user's own groups alone", { timeout: 300_000 }, async (t) => {
+test("a group named like a category is that category, and your own groups are left alone", { timeout: 300_000 }, async (t) => {
   const ff = await launch();
   t.after(() => ff.close());
   const tabs = CATEGORY_TABS.filter(([label]) => label === "dev" || label === "news");
   const urls = await ff.openTabs(tabs.map(([, title, url]) => [title, url]));
-  // A group of the user's own with a dev and a news tab, and a stray dev tab in "News".
-  const mine = [urls[0], urls.find((u, i) => tabs[i][0] === "news")];
-  const stray = urls[1];
+  const news = urls.filter((_, i) => tabs[i][0] === "news");
+  // A group of your own with a dev and a news tab, and a "news" group with one news tab.
+  const mine = [urls[0], news[0]];
   const [run] = await ff.organise({
-    settings: { mode: "categories", provider: "tabcat" },
+    settings: { categories: { News: EXAMPLE_CATEGORIES.News } },
     groups: [
       { title: "Reading list", urls: mine },
-      { title: "News", urls: [stray] },
+      { title: "news", urls: [news[1]] },
     ],
   });
   assert.equal(run.error, undefined);
-  for (const url of mine) assert.equal(run.layout[url], "Reading list", `${url} left the user's group`);
-  // Groups named after a category are Tabcat's to sort.
-  assert.equal(run.layout[stray], "Dev");
+  t.diagnostic(JSON.stringify(run.layout));
+  for (const url of mine) assert.equal(run.layout[url], "Reading list", `${url} left your group`);
+  // The other news tabs join the group you made, rather than a second one.
+  for (const url of news.slice(1)) assert.match(run.layout[url], /^news$/);
 });
