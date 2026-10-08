@@ -3,7 +3,9 @@ name: Release
 # Builds the add-on package for addons.mozilla.org, and a copy of the source for its reviewers.
 # - Push a tag like v0.1.0 (matching the version in extension/manifest.json) to release it:
 #   the version is submitted to the addons.mozilla.org listing (needs the repo secrets
-#   AMO_API_KEY and AMO_API_SECRET), and a GitHub release gets both files.
+#   AMO_API_KEY and AMO_API_SECRET), and a GitHub release gets both zips plus a signed
+#   tabcat.xpi. Mozilla's channels share version numbers, so the .xpi is the same build
+#   signed unlisted as X.Y.Z.1, which is signed straight away, with no review.
 # - Or run it by hand (Actions → Release → Run workflow) and choose:
 #   - "build only": the files as a download from the run.
 #   - "self-distributed": Mozilla signs the version without listing it, and a GitHub release
@@ -80,11 +82,26 @@ jobs:
           npx web-ext sign -s extension --channel=listed --approval-timeout=0 \
             --upload-source-code "web-ext-artifacts/tabcat-$VERSION-source.zip"
 
+      # The same extension signed for self-distribution, as X.Y.Z.1: the store has X.Y.Z, and a
+      # version number can't be used twice. Signed straight away, whatever the store's review.
+      - name: Sign for self-distribution
+        if: github.ref_type == 'tag' && env.SELF_DISTRIBUTED != 'true'
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        run: |
+          cp -r extension "$RUNNER_TEMP/extension-xpi"
+          node -e 'const f=process.argv[1]; const m=JSON.parse(require("fs").readFileSync(f)); m.version+=".1"; require("fs").writeFileSync(f, JSON.stringify(m, null, 2))' "$RUNNER_TEMP/extension-xpi/manifest.json"
+          npx web-ext sign -s "$RUNNER_TEMP/extension-xpi" --channel=unlisted \
+            --artifacts-dir "$RUNNER_TEMP/xpi" --upload-source-code "web-ext-artifacts/tabcat-$VERSION-source.zip"
+          mv "$RUNNER_TEMP"/xpi/*.xpi web-ext-artifacts/tabcat.xpi
+          ls -l web-ext-artifacts
+
       - name: Make the release
         if: github.ref_type == 'tag' && env.SELF_DISTRIBUTED != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" web-ext-artifacts/*.zip --title "Tabcat $GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" web-ext-artifacts/*.zip web-ext-artifacts/tabcat.xpi --title "Tabcat $GITHUB_REF_NAME" --generate-notes
 
       # Self-distributed: signed straight away, and the .xpi downloaded into web-ext-artifacts/.
       # It's renamed tabcat.xpi.

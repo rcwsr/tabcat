@@ -115,13 +115,14 @@ npm run build    # packages the extension into web-ext-artifacts/
 
 To release: raise `version` in `extension/manifest.json`, then push a tag to match
 (`git tag v0.2.0 && git push origin v0.2.0`). GitHub builds the add-on zip and a source zip,
-submits the version to addons.mozilla.org (Mozilla reviews and signs it), and makes a GitHub
-release with both zips. This needs the repo secrets `AMO_API_KEY` and `AMO_API_SECRET`. To
+submits the version to addons.mozilla.org (Mozilla reviews and signs it), signs the same
+build for self-distribution as `X.Y.Z.1` (straight away, no review), and makes a GitHub
+release with both zips and the signed `tabcat.xpi`. This needs the repo secrets `AMO_API_KEY` and `AMO_API_SECRET`. To
 build without a release: Actions → Release → Run workflow → "build only".
 
 Version numbers are shared across Mozilla's channels, so a version can't be both listed and
-self-distributed. "self-distributed" in the same menu has Mozilla sign a version without
-listing it, and attaches the signed `tabcat.xpi` to the release.
+self-distributed: that's why the `.xpi` is `X.Y.Z.1`. "self-distributed" in the same menu
+signs a version unlisted only, as `X.Y.Z`, and makes the release without submitting it.
 
 To load it by hand: `about:debugging` → This Firefox → Load Temporary Add-on →
 `extension/manifest.json` (after `npm install`).
