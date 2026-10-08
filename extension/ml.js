@@ -3,54 +3,75 @@
 // about:config switches and only allows one model per extension; Tabcat needs two.
 // Models download from Hugging Face on first use and are cached by the browser.
 // No tab data is sent anywhere.
-import { env, pipeline } from "./vendor/transformers.min.js";
+//
+// They run in a worker (ml-worker.js) that's stopped when it's idle, and when Firefox
+// suspends the background page, so the ONNX runtime's memory is freed each time.
 
-env.allowLocalModels = false;
-env.backends.onnx.wasm.wasmPaths = browser.runtime.getURL("vendor/");
-// Extension pages aren't cross-origin isolated, so WebAssembly threads aren't available.
-env.backends.onnx.wasm.numThreads = 1;
+// Firefox suspends an idle background page after ~30 s; stop the models before it does.
+const IDLE_MS = 20_000;
 
-const MODELS = {
-  // Sentence embeddings: tabs with similar titles get similar vectors.
-  embedding: ["feature-extraction", "Xenova/all-MiniLM-L6-v2"],
-  // Short topic names; the model Firefox's own smart tab groups use.
-  topic: ["text2text-generation", "Mozilla/smart-tab-topic"],
-};
+let worker = null;
+let idleTimer = null;
+let nextId = 0;
+// Calls waiting for the worker's answer, by id.
+const pending = new Map();
 
-const loaded = {};
-
-// onProgress(text) is called while a model downloads, which only happens on first use.
-function load(name, onProgress) {
-  const [task, model] = MODELS[name];
-  loaded[name] ??= pipeline(task, model, {
-    dtype: "q8",
-    device: "wasm",
-    progress_callback: (p) => {
-      if (p.status === "progress" && p.total > 1e6) onProgress?.(`Downloading ${model} (${Math.round(p.progress)}%)…`);
-    },
-  }).catch((err) => {
-    delete loaded[name];
-    throw new Error(`Couldn't load ${model}: ${err.message}`);
-  });
-  return loaded[name];
+function stop(reason = "The models were stopped.") {
+  clearTimeout(idleTimer);
+  worker?.terminate();
+  worker = null;
+  for (const call of pending.values()) call.reject(new Error(reason));
+  pending.clear();
 }
 
-// One unit vector per text. Texts go through the model one at a time: a batch pads every
-// text to the longest, which makes a tab's vector depend on the tabs batched with it, and
-// its memory grows with the square of that length (a window of tabs at once, some with page
-// descriptions, ran the model out of memory).
-export async function embed(texts, onProgress) {
-  const model = await load("embedding", onProgress);
-  const vectors = [];
-  for (const text of texts) {
-    vectors.push(...(await model([text], { pooling: "mean", normalize: true })).tolist());
-  }
-  return vectors;
+function start() {
+  if (worker) return worker;
+  worker = new Worker(browser.runtime.getURL("ml-worker.js"), { type: "module" });
+  const mine = worker;
+  mine.onmessage = ({ data: { id, progress, result, error } }) => {
+    const call = pending.get(id);
+    if (!call) return;
+    if (progress !== undefined) return call.onProgress?.(progress);
+    pending.delete(id);
+    if (error !== undefined) call.reject(new Error(error));
+    else call.resolve(result);
+    stopWhenIdle();
+  };
+  mine.onerror = (event) => {
+    if (worker === mine) stop(`Couldn't start the models: ${event.message || "the worker failed"}`);
+  };
+  return mine;
+}
+
+// Stops the models once nothing has used them for a while.
+function stopWhenIdle() {
+  clearTimeout(idleTimer);
+  if (!pending.size) idleTimer = setTimeout(stop, IDLE_MS);
+}
+
+function call(op, args, onProgress) {
+  clearTimeout(idleTimer);
+  return new Promise((resolve, reject) => {
+    const id = nextId++;
+    pending.set(id, { resolve, reject, onProgress });
+    try {
+      start().postMessage({ id, op, ...args });
+    } catch (err) {
+      pending.delete(id);
+      reject(err);
+    }
+  });
+}
+
+browser.runtime.onSuspend?.addListener(() => stop("Firefox suspended Tabcat."));
+
+// One unit vector per text. onProgress(text) is called while a model downloads, which only
+// happens on first use.
+export function embed(texts, onProgress) {
+  return call("embed", { texts }, onProgress);
 }
 
 // A short topic name for a prompt built by topicPrompt(), or "" if the model has none.
-export async function topic(prompt, onProgress) {
-  const model = await load("topic", onProgress);
-  const [out] = await model(prompt, { max_new_tokens: 6 });
-  return out?.generated_text?.trim() ?? "";
+export function topic(prompt, onProgress) {
+  return call("topic", { prompt }, onProgress);
 }

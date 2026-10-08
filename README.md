@@ -154,7 +154,8 @@ extension/
   plan.js         deciding where tabs go (no browser APIs)
   cluster.js      finding similar tabs (no browser APIs)
   naming.js       naming groups on this computer (no browser APIs)
-  ml.js           the on-device models (transformers.js)
+  ml.js           the on-device models (transformers.js), in a worker
+  ml-worker.js    runs the models; stopped when idle so their memory is freed
   ai-service.js   talking to your AI service
   layout.js       making groups, keeping them in order, Reorganise's Undo
   moves.js        finding moved tabs: the message, Show, ● marks, the badge, the shortcut
