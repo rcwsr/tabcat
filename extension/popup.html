@@ -3,27 +3,29 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      body { font: 13px system-ui, sans-serif; width: 240px; margin: 12px; }
+      body { font: 13px system-ui, sans-serif; width: 280px; margin: 12px; }
       button { width: 100%; padding: 8px; font: inherit; cursor: pointer; }
       .secondary { display: flex; gap: 6px; margin-top: 6px; }
       .secondary button { padding: 4px 8px; }
       #status { margin-top: 10px; white-space: pre-wrap; color: #555; }
-      #status.error { color: #c00; }
+      #status.error, #warning { color: #c00; }
+      #warning { margin-top: 10px; }
       #moves { margin-top: 12px; }
       #moves h2 { font-size: 12px; font-weight: 600; color: #555; margin: 0 0 4px; }
-      .move { display: flex; gap: 6px; align-items: baseline; margin: 4px 0; }
+      .move { display: flex; gap: 4px; align-items: baseline; margin: 4px 0; }
       .move span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .move button { width: auto; padding: 2px 8px; }
       #settings { display: block; margin-top: 10px; text-align: right; color: #555; }
     </style>
   </head>
   <body>
-    <button id="organise">Tidy tabs</button>
+    <button id="organise" title="Group the tabs in this window that aren't in a group">Tidy tabs</button>
     <div class="secondary">
       <button id="reorganise" title="Break up all groups in this window and sort every tab again">Reorganise</button>
       <button id="undoReorganise" title="Put the groups back as they were before Reorganise" hidden>Undo reorganise</button>
     </div>
     <div id="status"></div>
+    <div id="warning" hidden></div>
     <div id="moves" hidden>
       <h2>Recently moved</h2>
     </div>

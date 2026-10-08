@@ -1,39 +1,16 @@
-import { DEFAULT_SETTINGS } from "./settings.js";
-import { FIREFOX_ML_PERMISSION } from "./firefox-ml.js";
-import { SEND_TAB_DATA, checkService, isLocal } from "./ai-service.js";
+import { DEFAULT_SETTINGS, EXAMPLE_CATEGORIES, loadSettings } from "./settings.js";
+import { SAMPLE_TABS, SEND_TAB_DATA, chat, checkAddress, checkService, isLocal, listModels, namingMessages, parseNames } from "./ai-service.js";
 
-const form = document.getElementById("settings");
-const provider = document.getElementById("provider");
-const layaUrl = document.getElementById("layaUrl");
-const minConfidence = document.getElementById("minConfidence");
-const minConfidenceValue = document.getElementById("minConfidenceValue");
-const categoryList = document.getElementById("categories");
-const rowTemplate = document.getElementById("categoryRow");
-const status = document.getElementById("status");
-const modeInputs = document.querySelectorAll('input[name="mode"]');
-const autoSettings = document.getElementById("autoSettings");
-const categorySettings = document.getElementById("categorySettings");
-const modelSettings = document.getElementById("modelSettings");
-const tabcatHint = document.getElementById("tabcatHint");
-const firefoxSettings = document.getElementById("firefoxSettings");
-const firefoxStatus = document.getElementById("firefoxStatus");
-const allowFirefox = document.getElementById("allowFirefox");
-const layaSettings = document.getElementById("layaSettings");
-const groupingThreshold = document.getElementById("groupingThreshold");
-const groupingThresholdValue = document.getElementById("groupingThresholdValue");
-const keepOrganised = document.getElementById("keepOrganised");
-const newGroupForLoneTabs = document.getElementById("newGroupForLoneTabs");
-const toastStatus = document.getElementById("toastStatus");
-const nameWithAi = document.getElementById("nameWithAi");
-const renameGrowingGroups = document.getElementById("renameGrowingGroups");
-const aiSettings = document.getElementById("aiSettings");
-const apiUrl = document.getElementById("apiUrl");
-const apiKey = document.getElementById("apiKey");
-const apiModel = document.getElementById("apiModel");
-const apiPrompt = document.getElementById("apiPrompt");
+const $ = (id) => document.getElementById(id);
+const form = $("settings");
+const status = $("status");
+const categoryList = $("categories");
+const rowTemplate = $("categoryRow");
+const checkboxes = ["keepOrganised", "newGroupForLoneTabs", "renameGrowingGroups", "showToast", "markGroups", "useAi"];
+const fields = ["apiUrl", "apiKey", "apiModel", "apiPrompt"];
 
-// Lets Tabcat show "Moved … — Undo" in the page you're on. Granted at install; you can turn
-// it off in about:addons.
+// Lets Tabcat show its message in the page you're on (and read pages' descriptions).
+// Granted at install; you can turn it off in about:addons.
 const ALL_SITES = { origins: ["<all_urls>"] };
 
 function show(text, isError = false) {
@@ -41,155 +18,181 @@ function show(text, isError = false) {
   status.className = isError ? "error" : "";
 }
 
-function addCategoryRow(key = "", criteria = "") {
+function addCategoryRow(name = "", about = "") {
   const row = rowTemplate.content.firstElementChild.cloneNode(true);
-  row.querySelector(".key").value = key;
-  row.querySelector(".criteria").value = criteria;
+  row.querySelector(".key").value = name;
+  row.querySelector(".criteria").value = about;
   row.querySelector(".remove").addEventListener("click", () => row.remove());
   categoryList.append(row);
   return row;
 }
 
-function selectedMode() {
-  return document.querySelector('input[name="mode"]:checked')?.value ?? "auto";
-}
+const categoryNames = () => [...categoryList.querySelectorAll(".key")].map((input) => input.value.trim().toLowerCase());
 
-// Only the chosen mode's section is shown. Disabling the other one also stops its
-// required fields from blocking Save.
-function showMode(mode) {
-  autoSettings.hidden = autoSettings.disabled = mode !== "auto";
-  categorySettings.hidden = categorySettings.disabled = mode !== "categories";
-  // Only categories mode uses the decision model.
-  modelSettings.hidden = modelSettings.disabled = mode !== "categories";
-  showAiSettings();
-}
-
-function usesAi() {
-  const mode = selectedMode();
-  return (mode === "auto" && nameWithAi.checked) || (mode === "categories" && provider.value === "ai");
-}
-
-// The AI service's settings are only shown while something uses it.
+// The AI service's settings are only shown while it's turned on.
 function showAiSettings() {
-  aiSettings.hidden = !usesAi();
+  $("aiSettings").hidden = !$("useAi").checked;
+  showModels();
 }
 
-// Only the chosen model's settings are shown; disabling layad's also stops its URL blocking Save.
-function showProvider(value) {
-  tabcatHint.hidden = value !== "tabcat";
-  firefoxSettings.hidden = value !== "firefox";
-  layaUrl.disabled = layaSettings.hidden = value !== "laya";
-  showAiSettings();
+// The service's models, to choose from. If it can't list them, you type the name instead.
+// A long list (OpenRouter has hundreds) gets a search box.
+const LONG_LIST = 20;
+let listing = 0;
+let listed = [];
+
+function fillModelList() {
+  const words = $("modelSearch").value.trim().toLowerCase();
+  const current = $("apiModel").value.trim();
+  const names = listed.filter((name) => name.toLowerCase().includes(words));
+  // The chosen model stays, even if the service doesn't list it (not downloaded any more,
+  // say) or the search leaves it out.
+  if (current && !names.includes(current)) names.unshift(current);
+  $("modelList").replaceChildren(...(current ? [] : [new Option("Choose a model", "")]), ...names.map((name) => new Option(name, name)));
+  $("modelList").value = current;
 }
 
-async function showFirefoxPermission() {
-  const granted = await browser.permissions.contains(FIREFOX_ML_PERMISSION);
-  firefoxStatus.textContent = granted
-    ? "Tabcat is allowed to use Firefox's built-in AI."
-    : "Tabcat needs your permission to use Firefox's built-in AI.";
-  allowFirefox.hidden = granted;
+async function showModels() {
+  const ask = ++listing;
+  const [list, input, problem] = [$("modelList"), $("apiModel"), $("modelProblem")];
+  let models = [];
+  let error = "";
+  if ($("useAi").checked && $("apiUrl").value.trim()) {
+    try {
+      models = await listModels({ apiUrl: checkAddress($("apiUrl").value), apiKey: $("apiKey").value.trim() });
+    } catch (err) {
+      error = `Couldn't list the models: ${err.message}`;
+    }
+  }
+  // The address or key changed while this one was asking.
+  if (ask !== listing) return;
+  listed = models;
+  $("modelSearch").value = "";
+  $("modelSearch").hidden = models.length <= LONG_LIST;
+  fillModelList();
+  list.hidden = !models.length;
+  input.hidden = models.length > 0;
+  problem.hidden = !error;
+  problem.textContent = error;
 }
 
 async function showToastPermission() {
-  toastStatus.hidden = !keepOrganised.checked || (await browser.permissions.contains(ALL_SITES));
+  $("toastStatus").hidden = !$("showToast").checked || (await browser.permissions.contains(ALL_SITES));
 }
 
 function render(settings) {
-  for (const input of modeInputs) input.checked = input.value === settings.mode;
-  showMode(settings.mode);
-  keepOrganised.checked = settings.keepOrganised;
-  newGroupForLoneTabs.checked = settings.newGroupForLoneTabs;
-  nameWithAi.checked = settings.nameWithAi;
-  renameGrowingGroups.checked = settings.renameGrowingGroups;
-  apiUrl.value = settings.apiUrl;
-  apiKey.value = settings.apiKey;
-  apiModel.value = settings.apiModel;
-  apiPrompt.value = settings.apiPrompt;
-  groupingThreshold.value = settings.groupingThreshold;
-  groupingThresholdValue.textContent = Number(settings.groupingThreshold).toFixed(2);
-  // A disabled option can't stay selected, so fall back to the bundled model.
-  provider.value = provider.querySelector(`option[value="${settings.provider}"]:not([disabled])`)
-    ? settings.provider
-    : "tabcat";
-  showProvider(provider.value);
-  layaUrl.value = settings.layaUrl;
-  minConfidence.value = settings.minConfidence;
-  minConfidenceValue.textContent = Number(settings.minConfidence).toFixed(2);
+  for (const id of checkboxes) $(id).checked = settings[id];
+  for (const id of fields) $(id).value = settings[id];
+  $("groupingThreshold").value = settings.groupingThreshold;
+  $("tabOrder").value = settings.tabOrder;
   categoryList.replaceChildren();
-  for (const [key, criteria] of Object.entries(settings.categories)) addCategoryRow(key, criteria);
+  for (const [name, about] of Object.entries(settings.categories)) addCategoryRow(name, about);
+  showAiSettings();
 }
 
 // Returns settings to save, or throws with a message for the user.
 function collect() {
-  const settings = { mode: selectedMode(), keepOrganised: keepOrganised.checked,
-    newGroupForLoneTabs: newGroupForLoneTabs.checked, nameWithAi: nameWithAi.checked,
-    renameGrowingGroups: renameGrowingGroups.checked,
-    groupingThreshold: Number(groupingThreshold.value), provider: provider.value,
-    apiPrompt: apiPrompt.value.trim() };
-  if (provider.value === "laya") {
-    let url;
-    try {
-      url = new URL(layaUrl.value.trim());
-    } catch {
-      throw new Error("layad URL isn't a valid URL.");
-    }
-    // Tab data must stay on this machine.
-    if (url.protocol !== "http:" || url.hostname !== "127.0.0.1") {
-      throw new Error("layad URL must be http://127.0.0.1:<port>.");
-    }
-    settings.layaUrl = url.origin;
-  }
-
-  if (usesAi()) {
-    const { url, key, model } = checkService({ url: apiUrl.value, key: apiKey.value, model: apiModel.value });
+  const settings = Object.fromEntries(checkboxes.map((id) => [id, $(id).checked]));
+  Object.assign(settings, {
+    groupingThreshold: Number($("groupingThreshold").value),
+    tabOrder: $("tabOrder").value,
+    apiPrompt: $("apiPrompt").value.trim(),
+  });
+  if (settings.useAi) {
+    const { url, key, model } = checkService({ url: $("apiUrl").value, key: $("apiKey").value, model: $("apiModel").value });
     Object.assign(settings, { apiUrl: url, apiKey: key, apiModel: model });
   } else {
-    Object.assign(settings, { apiUrl: apiUrl.value.trim(), apiKey: apiKey.value.trim(), apiModel: apiModel.value.trim() });
+    Object.assign(settings, { apiUrl: $("apiUrl").value.trim(), apiKey: $("apiKey").value.trim(), apiModel: $("apiModel").value.trim() });
   }
-
   const categories = {};
   for (const row of categoryList.querySelectorAll(".category")) {
-    const key = row.querySelector(".key").value.trim();
-    const criteria = row.querySelector(".criteria").value.trim();
-    if (!key && !criteria) continue;
-    if (!key || !criteria) throw new Error("Every category needs a name and a description.");
-    const normalised = key.toLowerCase();
-    if (Object.keys(categories).some((k) => k.toLowerCase() === normalised)) {
-      throw new Error(`Duplicate category "${key}".`);
+    const name = row.querySelector(".key").value.trim();
+    const about = row.querySelector(".criteria").value.trim();
+    if (!name && !about) continue;
+    if (!name || !about) throw new Error("Every category needs a name and a description.");
+    if (Object.keys(categories).some((k) => k.toLowerCase() === name.toLowerCase())) {
+      throw new Error(`There are two categories called “${name}”.`);
     }
-    categories[key] = criteria;
+    categories[name] = about;
   }
-  if (Object.keys(categories).length < 2) throw new Error("Add at least two categories.");
-
-  return { ...settings, minConfidence: Number(minConfidence.value), categories };
+  return { ...settings, categories };
 }
 
-for (const input of modeInputs) input.addEventListener("change", () => showMode(selectedMode()));
+// What the AI service has cost so far.
+async function showUsage() {
+  const { aiUsage } = await browser.storage.local.get({ aiUsage: null });
+  const n = (x) => x.toLocaleString();
+  $("usage").textContent = aiUsage
+    ? `Since ${new Date(aiUsage.since).toLocaleDateString(undefined, { day: "numeric", month: "long" })}: ` +
+      `${n(aiUsage.requests)} request${aiUsage.requests === 1 ? "" : "s"}, ${n(aiUsage.input)} tokens sent and ${n(aiUsage.output)} received.`
+    : "No requests yet.";
+  $("resetUsage").hidden = !aiUsage;
+  const { aiWarning } = await browser.storage.session.get({ aiWarning: null });
+  $("aiWarning").hidden = !aiWarning;
+  $("aiWarning").textContent = aiWarning ? `Last time, the service couldn't be used, so this computer did it all: ${aiWarning}` : "";
+}
 
-groupingThreshold.addEventListener("input", () => {
-  groupingThresholdValue.textContent = Number(groupingThreshold.value).toFixed(2);
+// The keyboard shortcut to the last moved tab, as set in Firefox.
+async function showShortcut() {
+  const [command] = (await browser.commands.getAll()).filter((c) => c.name === "show-last-move");
+  $("shortcut").hidden = !command?.shortcut;
+  $("shortcutKey").textContent = command?.shortcut ?? "";
+  $("changeShortcut").hidden = !browser.commands.openShortcutSettings;
+}
+
+$("useAi").addEventListener("change", showAiSettings);
+$("apiUrl").addEventListener("change", showModels);
+$("apiKey").addEventListener("change", showModels);
+$("modelList").addEventListener("change", () => ($("apiModel").value = $("modelList").value));
+$("modelSearch").addEventListener("input", fillModelList);
+$("showToast").addEventListener("change", showToastPermission);
+$("addCategory").addEventListener("click", () => addCategoryRow().querySelector(".key").focus());
+
+$("addExamples").addEventListener("click", () => {
+  const have = new Set(categoryNames());
+  // An empty row is replaced rather than left above the examples.
+  for (const row of categoryList.querySelectorAll(".category")) {
+    if (!row.querySelector(".key").value.trim() && !row.querySelector(".criteria").value.trim()) row.remove();
+  }
+  for (const [name, about] of Object.entries(EXAMPLE_CATEGORIES)) if (!have.has(name.toLowerCase())) addCategoryRow(name, about);
+  show("Examples added. Change or remove any, then Save.");
 });
 
-provider.addEventListener("change", () => showProvider(provider.value));
-nameWithAi.addEventListener("change", showAiSettings);
-
-allowFirefox.addEventListener("click", async () => {
-  // Must run straight from the click: Firefox only shows permission prompts for user actions.
-  await browser.permissions.request(FIREFOX_ML_PERMISSION);
-  await showFirefoxPermission();
+$("testAi").addEventListener("click", async () => {
+  const result = $("testResult");
+  result.className = "";
+  result.textContent = "Testing…";
+  try {
+    const { url, key, model } = checkService({ url: $("apiUrl").value, key: $("apiKey").value, model: $("apiModel").value });
+    const start = performance.now();
+    const { text } = await chat(
+      { apiUrl: url, apiKey: key, apiModel: model },
+      namingMessages(SAMPLE_TABS, [], $("apiPrompt").value),
+      { sample: true },
+    );
+    const seconds = ((performance.now() - start) / 1000).toFixed(1);
+    const [name] = parseNames(text, SAMPLE_TABS.length);
+    result.textContent = name
+      ? `It works: it named two tabs about a trip to Lisbon “${name}” (${seconds} s).`
+      : `It answered, but not with a name: “${text.trim().slice(0, 80)}”`;
+  } catch (err) {
+    result.className = "error";
+    result.textContent = err.message;
+  }
 });
 
-keepOrganised.addEventListener("change", showToastPermission);
-
-minConfidence.addEventListener("input", () => {
-  minConfidenceValue.textContent = Number(minConfidence.value).toFixed(2);
+$("resetUsage").addEventListener("click", async (event) => {
+  event.preventDefault();
+  await browser.storage.local.remove("aiUsage");
+  await showUsage();
 });
 
-document.getElementById("addCategory").addEventListener("click", () => {
-  addCategoryRow().querySelector(".key").focus();
+$("changeShortcut").addEventListener("click", (event) => {
+  event.preventDefault();
+  browser.commands.openShortcutSettings();
 });
 
-document.getElementById("reset").addEventListener("click", () => {
+$("reset").addEventListener("click", () => {
   render(DEFAULT_SETTINGS);
   showToastPermission();
   show("Defaults restored. Save to keep them.");
@@ -201,7 +204,7 @@ form.addEventListener("submit", async (event) => {
     const settings = collect();
     // Sending tab data off this computer needs Firefox's data collection permission. The
     // request must come straight from the click, before any other await.
-    if (usesAi() && !isLocal(settings.apiUrl) && !(await browser.permissions.request(SEND_TAB_DATA))) {
+    if (settings.useAi && !isLocal(settings.apiUrl) && !(await browser.permissions.request(SEND_TAB_DATA))) {
       throw new Error("Not saved: Tabcat needs your permission to send tab data to your AI service.");
     }
     await browser.storage.local.set(settings);
@@ -211,6 +214,5 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-render(await browser.storage.local.get(DEFAULT_SETTINGS));
-await showFirefoxPermission();
-await showToastPermission();
+render(await loadSettings());
+await Promise.all([showToastPermission(), showUsage(), showShortcut()]);

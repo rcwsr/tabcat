@@ -18,8 +18,10 @@ anything about you or your tabs; like any download, Hugging Face can see your IP
 ## If you connect an AI service
 
 This is optional and off by default. If you set up an AI service in Settings, Tabcat sends
-it the titles, addresses (without the part after `?`) and page descriptions of the tabs it
-names or sorts, plus your API key. Nothing is sent anywhere else.
+it the titles and website names (such as `bbc.co.uk`, not the full address) of the tabs it
+asks about, the description a page gives itself when its title says little, and the names of
+your groups and categories with a few of their tabs' titles as examples. It also sends your
+API key and any instructions you've written for it. Nothing is sent anywhere else.
 
 - If the service runs on your own computer (such as Ollama or LM Studio), the data doesn't
   leave your computer.
@@ -29,11 +31,6 @@ names or sorts, plus your API key. Nothing is sent anywhere else.
 
 You can stop this at any time by turning the AI service off in Settings, or by removing the
 permission in `about:addons` → Tabcat → Permissions.
-
-## Laya
-
-If you choose Laya for categories mode, Tabcat sends tab titles and addresses to layad on
-your own computer (127.0.0.1). It doesn't leave your computer.
 
 ## Contact
 

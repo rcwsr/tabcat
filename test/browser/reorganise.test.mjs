@@ -17,7 +17,7 @@ test("reorganise and undo", { timeout: 300_000 }, async (t) => {
   const news = urls.slice(DEV.length);
   // The user's own groups, each a mix of topics, and a tab they took out of a group.
   await ff.organise({
-    settings: { mode: "auto" },
+    settings: {},
     groups: [
       { title: "Mixed", urls: [dev[0], dev[1], news[0]] },
       { title: "My stuff", urls: [news[1], dev[2]] },
@@ -35,15 +35,13 @@ test("reorganise and undo", { timeout: 300_000 }, async (t) => {
   assert.equal(before.leftAlone.length, 1);
 
   await t.test("if sorting fails, the groups are put back", async () => {
-    // Laya isn't running at this address, so sorting into categories throws.
-    await ff.command("set", { mode: "categories", provider: "laya", layaUrl: "http://127.0.0.1:9" });
-    await assert.rejects(ff.command("send", { type: "reorganise" }));
+    await ff.command("breakGrouping");
+    await assert.rejects(ff.command("send", { type: "reorganise" }), /couldn't make the group/);
     assert.deepEqual(await ff.command("layout"), before.layout);
     assert.deepEqual(await ff.command("order"), before.order);
     assert.deepEqual(await ff.command("colours"), before.colours);
     assert.deepEqual((await ff.command("session")).leftAlone, before.leftAlone);
     assert.equal(await ff.command("send", { type: "canUndoReorganise" }), false);
-    await ff.command("set", { mode: "auto" });
   });
 
   await t.test("breaks up every group and sorts all the tabs", async () => {

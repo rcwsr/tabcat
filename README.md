@@ -9,22 +9,19 @@ computer: tab data stays there unless you connect your own [AI service](#ai-serv
 
 ## What it does
 
-- **Groups tabs as you browse.** A couple of seconds after a tab loads, Tabcat puts it in the
-  group it fits best, or starts a new group with similar tabs. A message at the bottom of the
-  page says where it went, with **Undo**.
+- **Groups tabs as you browse.** A couple of seconds after a page loads, Tabcat puts it in
+  the group it fits best, or starts a new group with similar tabs.
 - **Tidy tabs** (toolbar button) groups every tab that isn't in a group yet. Your own groups
   stay as they are, but can take in matching tabs.
 - **Reorganise** breaks up every group in the window and sorts all the tabs again.
   **Undo reorganise** puts the old groups back.
 - A tab you take out of a group stays out.
 
-## Two ways to group
-
-**Automatically** (the default). Tabcat finds related tabs and names the groups itself, using
-two small models that run inside the extension:
-[all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2) to find tabs that are alike,
-and [smart-tab-topic](https://huggingface.co/Mozilla/smart-tab-topic) (the one Firefox's own
-tab grouping uses) to name them. They download from Hugging Face the first time (about 80 MB).
+Tabcat finds related tabs and names the groups itself, using two small models that run
+inside the extension: [all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2) to
+find tabs that are alike, and [smart-tab-topic](https://huggingface.co/Mozilla/smart-tab-topic)
+(the one Firefox's own tab grouping uses) to name them. They download from Hugging Face the
+first time (about 80 MB).
 
 - It goes by each tab's title and address. If a title says almost nothing (a home page titled
   "YouTube"), it also reads the page's description.
@@ -32,65 +29,72 @@ tab grouping uses) to name them. They download from Hugging Face the first time 
   different page joins it, the group gets a new name based on all its tabs. It keeps the
   old name if you've renamed the group yourself.
 
-**Into your categories.** You list categories (Work, News, Shopping…) with a sentence
-describing each, and each tab goes into the one it fits. A tab that doesn't clearly fit
-stays put. Groups you made yourself are left alone. You can choose what does the sorting:
+## Your categories
 
-- **Built into Tabcat** (default): the same model as above.
-- **Firefox's built-in AI**: the same model, run by Firefox. This is experimental: it needs
-  a permission (Settings has a button) and `browser.ml.enable` and `extensions.ml.enabled`
-  set to `true` in `about:config`.
-- **Laya**: a local decision model. You need to run [layad](https://github.com/rcwsr/layad)
-  (`brew tap rcwsr/tap && brew install layad && brew services start layad`). It places
-  fewer tabs, but it gets more of them right.
-- **My AI service**: see below.
+Optional. Add groups you always want, like Work or Shopping, each with a sentence saying
+what belongs in it (Settings has examples to start from). A tab that fits a category goes
+into it; other tabs are grouped automatically as above. A group you made with the same name
+as a category is that category. Groups you made yourself are left alone.
 
-How each one did on 48 test tabs with the default categories:
+## Finding a tab that moved
 
-| Model | Tabs placed | Placed correctly |
-|---|---|---|
-| Built into Tabcat | 43 | 36 |
-| Firefox's built-in AI | 45 | 36 |
-| Laya | 30 | 28 |
-| AI service (Gemma 4 E4B in LM Studio) | 48 | 44 |
+- When Tabcat moves the tab you're on, a message at the bottom of the page says which group
+  it went to. **Show** scrolls the tab bar to the tab (opening its group if it's collapsed)
+  and makes the group blink; **Undo** puts it back.
+- Tabs moved while you were on another are counted on the toolbar button. Its popup lists
+  recent moves with Show, which goes to the tab (**Back** on that page returns you), and Undo.
+- The group's name is marked with ● until you've been to it.
+- **Alt+Shift+M** shows the last tab Tabcat moved (you can change the shortcut).
 
 ## AI service
 
-You can connect any service with an OpenAI-compatible API: OpenAI, OpenRouter, or a model
-on your own computer with Ollama (`http://localhost:11434/v1`) or LM Studio
-(`http://localhost:1234/v1`). In Settings, enter the address (up to `/v1`), an API key if it
-needs one, and the model name. Then either:
+Optional. You can connect any service with an OpenAI-compatible API: OpenAI, OpenRouter, or
+a model on your own computer with Ollama (`http://localhost:11434/v1`) or LM Studio
+(`http://localhost:1234/v1`). In Settings, enter the address (up to `/v1`) and an API key if
+it needs one, then choose a model from the service's list. **Test** checks it with two
+made-up tabs.
 
-- tick **Name groups with my AI service**. Tabs are still grouped on your computer; only
-  the names come from the service, or
-- choose **My AI service** to sort tabs into your categories.
+Tabcat still does what it's sure of on your computer: tabs clearly like a group or category
+join it there. The tabs it isn't sure of go to the service, many in one request, with the
+groups and categories they might belong in, and the service says which group each tab
+belongs in (an existing one, or a new one it names). If the service can't be reached, Tabcat
+does it all on your computer and says why. Settings shows how many requests and tokens it
+has used.
 
-The service receives the titles, addresses (without the query string) and page descriptions
-of the tabs it names or sorts. If the address isn't on your computer, it must use https, and
-Firefox will ask your permission to send tab data. The key is stored in your Firefox profile
-and only sent to that address.
+The service receives the titles and website names (not the full address) of the tabs it's
+asked about, plus a page's description when its title says little. If the address isn't on
+your computer, it must use https, and Firefox will ask your permission to send tab data. The
+key is stored in your Firefox profile and only sent to that address.
+
+How it did on labelled test tabs (`npm run eval`; the AI service was Gemma 4 E4B in
+LM Studio):
+
+| Test | On this computer | With the AI service |
+|---|---|---|
+| Tidy 48 tabs into the example categories: right / wrong | 25 / 0 | 42 / 0, one request |
+| Tidy 24 tabs: pairs grouped correctly / pairs found | 0.76 / 0.59 | 0.82 / 0.82, one request |
+| 48 tabs into categories as they load: right / wrong | 24 / 0 | 36 / 0 |
 
 ## Settings
 
 Open them from the toolbar popup → **Settings**. You can:
 
-- choose automatic grouping or your categories
 - turn off grouping as you browse, and only group when you click **Tidy tabs**
-- stop a tab that matches nothing from getting a group of its own
-- set how alike tabs must be to share a group (automatic) or how sure the model must be
-  (categories)
-- turn off renaming groups when they grow
-- edit your categories
-- set up an AI service
+- stop a tab that fits nowhere from getting a group of its own
+- set how alike tabs must be to share a group
+- keep the tabs in each group in A–Z order, by title or by website
+- turn off renaming groups as they grow
+- add your categories
+- turn off the message or the ● mark, and change the keyboard shortcut
+- set up an AI service, with your own instructions for it (like "name groups in French")
 
 ## Permissions
 
 - **Tabs and tab groups**: to read titles and addresses and move tabs.
-- **Access to all websites**: to show the "Moved to…" message on the page you're on, and
+- **Access to all websites**: to show the "Moved to…" message on the page, and
   to read page descriptions. You can turn it off in `about:addons`. Without it, moves are
-  counted on the toolbar button and listed in the popup with Undo.
-- **Send tab data** (asked only when you set up a remote AI service).
-- **Firefox's built-in AI** (asked only if you choose it).
+  counted on the toolbar button and listed in the popup.
+- **Send tab data** (asked only when you set up an AI service that isn't on your computer).
 
 See the [privacy policy](PRIVACY.md).
 
@@ -137,25 +141,35 @@ npm run test:all
 
 The browser tests need Firefox 142 or later (set `FIREFOX` to its path if it isn't found).
 They send Firefox's traffic through a local proxy that serves fake pages and plays the AI
-service, so the only network access is downloading the models. The Laya test is skipped
-unless layad is running. The labelled test tabs are in `test/fixtures/tabs.mjs`.
+service, so the only network access is downloading the models. The labelled test tabs are
+in `test/fixtures/tabs.mjs`.
+
+`npm run eval` measures grouping on the labelled tabs, on this computer and with an AI
+service (`AI_URL=http://localhost:1234/v1 AI_MODEL=google/gemma-4-e4b npm run eval`), with
+the requests and tokens it took. `VERBOSE=1` lists the groups; a word after it picks the
+tests (`npm run eval -- categories`).
 
 ## Code
 
 ```
 extension/
-  background.js   grouping, keeping tabs organised, undo
-  cluster.js      clustering and naming helpers (no browser APIs)
+  background.js   events and messages
+  organise.js     Tidy tabs, Reorganise and grouping tabs as they load
+  plan.js         deciding where tabs go (no browser APIs)
+  cluster.js      finding similar tabs (no browser APIs)
+  naming.js       naming groups on this computer (no browser APIs)
   ml.js           the on-device models (transformers.js)
-  providers.js    what sorts tabs into categories
   ai-service.js   talking to your AI service
-  firefox-ml.js   Firefox's built-in AI
+  layout.js       making groups, keeping them in order, Reorganise's Undo
+  moves.js        finding moved tabs: the message, Show, ● marks, the badge, the shortcut
   toast.js        the "Moved to…" message
+  session.js      what Tabcat remembers until Firefox closes
+  settings.js     default settings and example categories
   options.*       the Settings page
   popup.*         the toolbar popup
-  settings.js     default settings and categories
   icons/          the toolbar and add-on icon
 scripts/vendor.mjs  copies the model runtime into extension/vendor/ (not committed)
+scripts/eval.mjs    measures grouping on the labelled tabs
 test/             unit, model and browser tests, and labelled tabs
 store/            text and icon for the addons.mozilla.org listing
 ```
