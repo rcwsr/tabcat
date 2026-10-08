@@ -7,7 +7,9 @@
 //   with a hook appended to background.js. The hook fetches a task from the server, runs it
 //   with the extension's own functions and posts the results back.
 // - The server is also a stand-in AI service at ${origin}/v1 (OpenAI chat completions):
-//   ff.aiRequests records what it was asked, and ff.aiReply(request) says what it answers.
+//   ff.aiRequests records what it was asked, and ff.aiReply(request) says what it answers (or a promise of it).
+//   It lists ff.aiModels as its models.
+import assert from "node:assert/strict";
 import puppeteer from "puppeteer-core";
 import http from "node:http";
 import { spawn } from "node:child_process";
@@ -15,6 +17,7 @@ import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { setTimeout as sleep } from "node:timers/promises";
 
 export const FIREFOX =
   process.env.FIREFOX ?? (process.platform === "darwin" ? "/Applications/Firefox.app/Contents/MacOS/firefox" : "firefox");
@@ -30,14 +33,23 @@ const PREFS = {
   "dom.security.https_only_mode": false,
 };
 
-const TYPES = { ".html": "text/html", ".css": "text/css", ".svg": "image/svg+xml", ".js": "text/javascript", ".mjs": "text/javascript", ".wasm": "application/wasm" };
+const TYPES = { ".html": "text/html", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".js": "text/javascript", ".mjs": "text/javascript", ".wasm": "application/wasm" };
 
 const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 
-// Pass to launch() as `firefoxML` to turn on Firefox's built-in AI and grant Tabcat trialML.
-const FIREFOX_ML_PREFS = { "browser.ml.enable": true, "extensions.ml.enabled": true };
+// An ff.aiReply for Tabcat's requests (see namingMessages): names each numbered tab with
+// nameOf("Title (site)").
+export const perTab = (nameOf) => (request) =>
+  request.messages
+    .at(-1)
+    .content.split("\n")
+    .flatMap((line) => {
+      const match = /^(\d+)\. (.*)$/.exec(line);
+      return match ? [`${match[1]}: ${nameOf(match[2]) ?? ""}`] : [];
+    })
+    .join("\n");
 
-export async function launch({ firefoxML = false } = {}) {
+export async function launch() {
   const titles = new Map(); // url -> page title
   const metas = new Map(); // url -> { meta name: content }
   let task;
@@ -67,14 +79,22 @@ export async function launch({ firefoxML = false } = {}) {
       if (command) return res.end(JSON.stringify(command));
       return (sendCommand = () => res.end(JSON.stringify(command)));
     }
+    if (path === "/v1/models") {
+      res.setHeader("Content-Type", "application/json");
+      return res.end(JSON.stringify({ object: "list", data: ff.aiModels.map((id) => ({ id, object: "model" })) }));
+    }
     if (path === "/v1/chat/completions") {
       let body = "";
       req.on("data", (c) => (body += c));
-      req.on("end", () => {
+      req.on("end", async () => {
         const request = { ...JSON.parse(body), authorization: req.headers.authorization };
         ff.aiRequests.push(request);
+        const content = await ff.aiReply(request);
         res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify({ choices: [{ message: { role: "assistant", content: ff.aiReply(request) } }] }));
+        res.end(JSON.stringify({
+          choices: [{ message: { role: "assistant", content } }],
+          usage: { prompt_tokens: 100, completion_tokens: 10 },
+        }));
       });
       return;
     }
@@ -104,20 +124,8 @@ export async function launch({ firefoxML = false } = {}) {
   const port = server.address().port;
 
   const profile = mkdtempSync(join(tmpdir(), "tabcat-test-"));
-  const prefs = { ...PREFS, "network.proxy.http_port": port, ...(firefoxML ? FIREFOX_ML_PREFS : {}) };
+  const prefs = { ...PREFS, "network.proxy.http_port": port };
   writeFileSync(join(profile, "user.js"), Object.entries(prefs).map(([k, v]) => `user_pref(${JSON.stringify(k)}, ${JSON.stringify(v)});`).join("\n"));
-  if (firefoxML) {
-    writeFileSync(
-      join(profile, "extension-preferences.json"),
-      JSON.stringify({
-        "tabcat@cwsr.dev": {
-          permissions: ["trialML"],
-          origins: [],
-          data_collection: [],
-        },
-      }),
-    );
-  }
 
   const firefox = spawn(FIREFOX, ["--headless", "--no-remote", "--profile", profile, "--remote-debugging-port", "0", "about:blank"], {
     env: { ...process.env, MOZ_NO_REMOTE: "1" },
@@ -143,6 +151,7 @@ export async function launch({ firefoxML = false } = {}) {
     browser,
     origin: `http://127.0.0.1:${port}`,
     aiRequests: [],
+    aiModels: ["llama-3.1-8b", "gemma-3-4b", "text-embedding-nomic-embed-text-v1.5"],
     aiReply: () => "none",
 
     // Opens one tab per [title, url, meta]; url is host + path, served over the proxy, and
@@ -172,6 +181,32 @@ export async function launch({ firefoxML = false } = {}) {
       return pages.get(url);
     },
 
+    // The page of the tab showing url.
+    page: (url) => pages.get(url),
+
+    // Takes the tab showing url to another page, with its own title.
+    async navigate(url, [title, hostPath]) {
+      const to = new URL(`http://${hostPath}`).href;
+      titles.set(to, title);
+      const page = pages.get(url);
+      pages.delete(url);
+      await page.goto(to, { waitUntil: "load" });
+      pages.set(to, page);
+      if (front === url) front = to;
+      return to;
+    },
+
+    // Polls the tab layout until check(layout) passes. The first move loads the models.
+    async waitForLayout(check, what, timeout = 120_000) {
+      const deadline = Date.now() + timeout;
+      for (;;) {
+        const layout = await ff.command("layout");
+        if (check(layout)) return layout;
+        if (Date.now() > deadline) assert.fail(`timed out waiting for ${what}: ${JSON.stringify(layout)}`);
+        await sleep(500);
+      }
+    },
+
     // Installs the extension with the test hook, then runs `task`:
     //   { settings, groups: [{ title, urls }] (made before organising), runs }
     // Resolves to [{ result, error, layout: { url: group title or null } }], one per run.
@@ -195,7 +230,8 @@ export async function launch({ firefoxML = false } = {}) {
     },
 
     // After organise(), asks the extension something. name is one of:
-    //   "layout"            { url: group title or null } for every tab
+    //   "layout"            { url: group title or null } for every tab (titles as shown,
+    //                       with the mark on groups with a moved tab you haven't been to)
     //   "ungroup", url      takes that tab out of its group, as a user would
     //   "colours"           { group title: colour }
     //   "set", settings     saves settings, as the settings page would
@@ -203,7 +239,12 @@ export async function launch({ firefoxML = false } = {}) {
     //   "allSites", granted whether Tabcat may use websites; with true or false, sets it first
     //   "send", message     what the popup would send, for this window; replies with the answer
     //   "order"             the tabs' URLs, left to right
+    //   "moved"             tabs moved since last asked: [[url, fromIndex, toIndex]]
+    //   "collapse", title   collapses that group; replies { title: collapsed } for every group
     //   "session"           everything in storage.session
+    //   "local"             everything in storage.local
+    //   "active"            the URL of the tab in front
+    //   "breakGrouping"     the next tabs.group() fails, as if Firefox had a problem
     async command(name, arg) {
       const reply = new Promise((resolve) => (replied = resolve));
       command = { name, arg };
@@ -247,6 +288,9 @@ function hook(origin) {
       const groupId = await browser.tabs.group({ tabIds: tabs.filter((t) => urls.includes(t.url)).map((t) => t.id) });
       await browser.tabGroups.update(groupId, { title });
     }
+    // Tabs moved since the "moved" command last asked: [url, from, to].
+    const moves = [];
+    browser.tabs.onMoved.addListener((tabId, { fromIndex, toIndex }) => moves.push([tabId, fromIndex, toIndex]));
     const runs = [];
     for (let i = 0; i < (task.runs ?? 1); i++) {
       let result, error;
@@ -279,7 +323,27 @@ function hook(origin) {
           }
           else if (name === "send") reply = (await handleMessage({ ...arg, windowId: win.id })) ?? null;
           else if (name === "order") reply = (await browser.tabs.query({ windowId: win.id })).map((t) => t.url);
+          else if (name === "moved") {
+            const urls = new Map((await browser.tabs.query({})).map((t) => [t.id, t.url]));
+            reply = moves.splice(0).map(([id, from, to]) => [urls.get(id), from, to]);
+          }
+          else if (name === "collapse") {
+            // arg: a group's title to collapse. Replies { title: collapsed }.
+            const group = (await browser.tabGroups.query({ windowId: win.id })).find((g) => g.title === arg);
+            if (group) await browser.tabGroups.update(group.id, { collapsed: true });
+            reply = Object.fromEntries((await browser.tabGroups.query({ windowId: win.id })).map((g) => [g.title, g.collapsed]));
+          }
           else if (name === "session") reply = await browser.storage.session.get();
+          else if (name === "local") reply = await browser.storage.local.get();
+          else if (name === "active") reply = (await browser.tabs.query({ windowId: win.id, active: true }))[0].url;
+          else if (name === "breakGrouping") {
+            const group = browser.tabs.group;
+            const put = (value) => Object.defineProperty(browser.tabs, "group", { value, configurable: true, writable: true });
+            put(async () => {
+              put(group);
+              throw new Error("Firefox couldn't make the group");
+            });
+          }
           else if (name === "ungroup") {
             const [tab] = (await browser.tabs.query({ windowId: win.id })).filter((t) => t.url === arg);
             await browser.tabs.ungroup(tab.id);

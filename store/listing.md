@@ -1,7 +1,7 @@
 # Store listing (addons.mozilla.org)
 
 What to paste into each field when submitting Tabcat. Icon: `icon-128.png` in this folder
-(the add-on itself uses `extension/icons/tabcat.svg`).
+(the add-on itself uses the PNGs in `extension/icons/`).
 
 ## Name
 
@@ -17,8 +17,9 @@ account, no tracking, and your tabs aren't sent anywhere unless you connect your
 Tabcat sorts your tabs into Firefox tab groups and gives each group a name.
 
 **As you browse:** a couple of seconds after a tab loads, Tabcat puts it in the group it
-fits best, or starts a new group with similar tabs. A message at the bottom of the page
-says where it went, with Undo.
+fits best, or starts a new group with similar tabs. If it's the tab you're on, a message
+at the bottom of the page says where it went: Show scrolls the tab bar to it, and Undo puts
+it back.
 
 **Tidy tabs:** one click groups every tab that isn't in a group yet. Your own groups stay
 as they are.
@@ -26,17 +27,18 @@ as they are.
 **Reorganise:** breaks up every group in the window and sorts all the tabs again. Undo
 puts the old groups back.
 
-**Two ways to group:**
-- Automatically: Tabcat finds related tabs and names the groups itself.
-- Into your own categories: you list them (Work, News, Shopping…) and each tab goes into
-  the one it fits.
+**Your categories (optional):** add groups you always want (Work, News, Shopping…) and
+tabs that fit them go into them. Everything else is grouped automatically.
+
+**A–Z order (optional):** keep the tabs in each group sorted by title or by website.
 
 **Private:** grouping and naming are done by small AI models running inside the extension.
 They download once (about 80 MB) the first time you use Tabcat. Your tabs aren't sent
 anywhere.
 
 **Optional:** connect an AI service of your own (OpenAI, OpenRouter, or a model on your
-computer with Ollama or LM Studio) for better names. Firefox asks your permission before
+computer with Ollama or LM Studio) for better names and categories. Tabcat only asks it
+about the tabs it isn't sure of, many in one request. Firefox asks your permission before
 any tab data is sent.
 
 Open source (MIT): https://github.com/rcwsr/tabcat
@@ -62,7 +64,7 @@ Paste the contents of `PRIVACY.md`.
 
 At least one, 1280×800 is a good size. Suggested:
 1. A window of tabs after Tidy tabs, with named groups.
-2. The "Moved … to …" message with Undo at the bottom of a page.
+2. The "Moved … to …" message with Show and Undo at the bottom of a page.
 3. The toolbar popup.
 4. The Settings page.
 
@@ -90,15 +92,17 @@ ONNX Runtime WebAssembly.
 
 **Permissions.**
 - `tabs`, `tabGroups`: read tab titles and addresses, and group tabs.
-- `scripting` and access to all websites: show the "Moved … to …" message with Undo on the
-  page you're looking at (`toast.js`), and read a page's `<meta>` description, keywords and
-  site name when its title says too little to group by. Nothing read is sent anywhere.
-- `storage`: settings, and recent moves for Undo.
-- `http://127.0.0.1/*`: Laya, an optional decision model running locally (layad).
-- Optional `trialML`: Firefox's built-in AI, if the user chooses it in Settings.
+- `scripting` and access to all websites: show the "Moved … to …" message with Show and
+  Undo on the page you're looking at (`toast.js`), and read a page's `<meta>` description,
+  keywords and site name when its title says too little to group by. Nothing read is sent
+  anywhere unless the user sets up an AI service.
+- `storage`: settings, recent moves for Undo and Show, and AI service usage.
+- `http://127.0.0.1/*`, `http://localhost/*`: an optional AI service on the user's own
+  computer (Ollama, LM Studio), which still works if access to all websites is turned off.
 - Optional data collection (`browsingActivity`, `websiteContent`): only requested when the
-  user sets up a remote AI service in Settings. Tab titles, addresses and page descriptions
-  are then sent to that service, and nowhere else.
+  user sets up an AI service that isn't on their computer. Tab titles, website names and
+  some page descriptions are then sent to that service, and nowhere else.
+- `commands`: Alt+Shift+M shows the last tab Tabcat moved.
 
 **Testing.** Open some tabs on different topics, click the Tabcat toolbar button → Tidy
 tabs. The first run downloads the models (about 80 MB), which takes a little while.

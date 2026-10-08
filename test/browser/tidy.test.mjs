@@ -1,5 +1,5 @@
-// Automatic grouping in real Firefox: bundled models, real tab groups, a group the user
-// already made, and a second run that should change nothing.
+// Tidy tabs in real Firefox: bundled models, real tab groups, a group you made already, a
+// second run that should change nothing, and A–Z order.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { GROUPING_HELDOUT } from "../fixtures/tabs.mjs";
@@ -12,16 +12,19 @@ const TRIP = [
 ];
 const TABS = [...TRIP, ...GROUPING_HELDOUT];
 
-test("automatic grouping in Firefox", { timeout: 300_000 }, async (t) => {
+const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+
+test("Tidy tabs in Firefox", { timeout: 300_000 }, async (t) => {
   const ff = await launch();
   t.after(() => ff.close());
   const urls = await ff.openTabs(TABS.map(([, title, url]) => [title, url]));
   const labelOf = Object.fromEntries(urls.map((u, i) => [u, TABS[i][0]]));
+  const titleOf = Object.fromEntries(urls.map((u, i) => [u, TABS[i][1]]));
 
-  // The user has already grouped two of the trip tabs. One-off tabs are left out at first;
-  // the last step turns on giving each a group of its own.
+  // You've already grouped two of the trip tabs. One-off tabs are left out at first; a
+  // later step turns on giving each a group of its own.
   const [first, second] = await ff.organise({
-    settings: { mode: "auto", newGroupForLoneTabs: false },
+    settings: { newGroupForLoneTabs: false },
     groups: [{ title: "My trip", urls: urls.slice(0, 2) }],
     runs: 2,
   });
@@ -31,7 +34,7 @@ test("automatic grouping in Firefox", { timeout: 300_000 }, async (t) => {
   for (const [url, title] of Object.entries(first.layout)) if (title) (groups[title] ??= []).push(labelOf[url]);
   t.diagnostic(JSON.stringify(groups));
 
-  await t.test("the user's group keeps its tabs and takes in the matching one", () => {
+  await t.test("your group keeps its tabs and takes in the matching one", () => {
     assert.deepEqual(groups["My trip"], ["trip", "trip", "trip"]);
   });
 
@@ -48,7 +51,6 @@ test("automatic grouping in Firefox", { timeout: 300_000 }, async (t) => {
     const grouped = Object.entries(first.layout).filter(([url, title]) => title && labelOf[url] === "solo");
     assert.ok(grouped.length <= 1, `${grouped.length} one-off tabs grouped`);
     assert.ok(first.result.skipped >= 2, `only ${first.result.skipped} not grouped`);
-    assert.equal(first.result.skippedBecause, "nothing similar");
   });
 
   await t.test("group names are clean", () => {
@@ -76,6 +78,21 @@ test("automatic grouping in Firefox", { timeout: 300_000 }, async (t) => {
     for (const title of titles) assert.ok(!Object.values(first.layout).includes(title), `reused "${title}"`);
     // The tabs grouped before stay where they were.
     for (const [url, title] of Object.entries(first.layout)) if (title) assert.equal(layout[url], title);
+  });
+
+  await t.test("choosing A–Z order sorts every group by title", async () => {
+    await ff.command("set", { tabOrder: "title" });
+    // Sorting happens as the setting changes; wait for the last group.
+    const sorted = async () => {
+      const [layout, order] = [await ff.command("layout"), await ff.command("order")];
+      return Object.values(Object.groupBy(order.filter((u) => layout[u]), (u) => layout[u])).every((members) =>
+        members.every((u, i) => i === 0 || collator.compare(titleOf[members[i - 1]], titleOf[u]) <= 0),
+      );
+    };
+    const deadline = Date.now() + 10_000;
+    while (!(await sorted()) && Date.now() < deadline);
+    assert.ok(await sorted(), "a group isn't in A–Z order");
+    await ff.command("set", { tabOrder: "added" });
   });
 
   await t.test("tabs that say almost nothing go together if they're on the same site", async () => {

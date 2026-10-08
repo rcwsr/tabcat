@@ -5,26 +5,26 @@
     <title>Tabcat settings</title>
     <link rel="stylesheet" href="theme.css" />
     <style>
-      body { display: flex; flex-direction: column; height: 100vh; }
-      form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-      .scroll { flex: 1; overflow-y: auto; padding-bottom: 8px; }
-      .page { max-width: 720px; margin: 0 auto; padding: 0 16px; }
-      h1 { display: flex; align-items: center; gap: 10px; font-size: 22px; margin: 28px 0 20px; }
+      body { padding: 0 16px 32px; }
+      .page { max-width: 680px; margin: 0 auto; }
+      h1 { display: flex; align-items: center; gap: 10px; font-size: 22px; margin: 28px 0 6px; }
       h1 img { width: 32px; height: 32px; }
-      fieldset { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin: 0 0 16px; padding: 4px 18px 16px; min-width: 0; }
-      legend { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding: 0 6px; margin-left: -6px; }
-      fieldset[hidden] { display: none; }
+      .intro { color: var(--muted); margin: 0 0 20px; }
+      section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; padding: 14px 18px 10px; }
+      section[hidden], div[hidden] { display: none; }
+      h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 4px; }
+      .optional { font-weight: 400; text-transform: none; letter-spacing: 0; }
       label { display: block; margin: 12px 0 4px; font-weight: 500; }
-      input[type="text"], input[type="url"], input[type="password"], select, textarea {
+      label.choice { display: flex; gap: 10px; align-items: center; cursor: pointer; }
+      .hint { color: var(--muted); font-size: 12.5px; margin: 4px 0 8px 46px; }
+      .hint.flush { margin-left: 0; }
+      .warning, #testResult.error { color: var(--danger); }
+      input[type="text"], input[type="url"], input[type="password"], input[type="search"], select, textarea {
         font: inherit; width: 100%; padding: 7px 9px; color: var(--text); background: var(--field);
         border: 1px solid var(--border); border-radius: 8px;
       }
+      #modelSearch { margin-bottom: 4px; }
       textarea { resize: vertical; }
-      input[type="range"] { width: 100%; accent-color: var(--accent); }
-      output { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
-      .hint { color: var(--muted); font-size: 12.5px; margin: 4px 0 0; }
-      .choice { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; font-weight: 500; cursor: pointer; }
-      .choice + .hint { margin-left: 46px; }
       /* On/off switches: the checkbox itself, restyled. */
       input[type="checkbox"] {
         appearance: none; flex: none; position: relative; width: 36px; height: 20px; margin: 0;
@@ -36,108 +36,93 @@
       }
       input[type="checkbox"]:checked { background: var(--accent); }
       input[type="checkbox"]:checked::before { transform: translateX(16px); }
-      /* The grouping mode: two cards, the chosen one outlined. */
-      #modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
-      .mode { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 12px 14px; border: 2px solid var(--border); border-radius: var(--radius); cursor: pointer; }
-      .mode:hover { border-color: var(--muted); }
-      .mode:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-      .mode { position: relative; }
-      .mode input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
-      .mode:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-      .mode strong { font-size: 15px; }
-      .mode span { color: var(--muted); font-size: 12.5px; font-weight: 400; }
+      .slider { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+      .slider input { flex: 1; max-width: 320px; accent-color: var(--accent); }
       .category { display: grid; grid-template-columns: 140px 1fr auto; gap: 8px; margin-bottom: 8px; align-items: start; }
       .category textarea { min-height: 2.4em; }
-      .category .remove { padding: 6px 10px; color: var(--muted); }
-      .category .remove:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); }
-      #categories { margin-top: 12px; }
-      .actions { background: var(--surface); border-top: 1px solid var(--border); padding: 12px 0; }
+      .remove { padding: 6px 10px; color: var(--muted); }
+      .remove:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); }
+      .row { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+      /* The Save bar is a footer under the scrolling settings, so it never covers a control. */
+      kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; background: var(--field); }
+      body { display: flex; flex-direction: column; height: 100vh; padding: 0; }
+      form { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+      .scroll { flex: 1; overflow-y: auto; padding: 0 16px 8px; }
+      .actions { background: var(--surface); border-top: 1px solid var(--border); padding: 12px 16px; }
       .actions .page { display: flex; gap: 8px; align-items: center; }
       #status { flex: 1; min-width: 0; text-align: right; }
-      @media (max-width: 520px) { #modes { grid-template-columns: 1fr; } .category { grid-template-columns: 1fr auto; } .category textarea { grid-column: 1 / -1; grid-row: 2; } }
     </style>
   </head>
   <body>
     <form id="settings">
-      <div class="scroll"><div class="page">
-      <h1><img src="icons/tabcat.svg" alt="" />Tabcat settings</h1>
-      <fieldset>
-        <legend>How to group</legend>
-        <div id="modes">
-          <label class="mode"><input type="radio" name="mode" value="auto" /><strong>Automatic</strong><span>Find groups of related tabs and name them</span></label>
-          <label class="mode"><input type="radio" name="mode" value="categories" /><strong>My categories</strong><span>Sort tabs into the categories you define below</span></label>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Keep tabs organised</legend>
-        <label class="choice"><input type="checkbox" id="keepOrganised" />Put new tabs into a matching group as I browse</label>
-        <p class="hint">A moment after a tab loads, Tabcat moves it into the group it matches best. It won't put a tab back in a group you took it out of. Turn this off to group only when you press Tidy tabs.</p>
-        <label class="choice"><input type="checkbox" id="newGroupForLoneTabs" />If a tab matches no group, give it a new one (automatic grouping)</label>
-        <p class="hint">Similar ungrouped tabs go into the new group with it. Turn this off to leave a tab alone until there's a group or another tab like it.</p>
-        <p id="toastStatus" class="hint" hidden>Tabcat's access to websites is turned off (about:addons → Tabcat → Permissions), so moves aren't shown on the page you're on. They're listed in Tabcat's popup instead.</p>
-      </fieldset>
-
-      <fieldset id="autoSettings">
-        <legend>Automatic grouping</legend>
-        <p class="hint">Tabcat runs two small AI models on this computer: one to find related tabs, one to suggest names. The first run downloads them (about 80 MB) from Hugging Face; after that they're cached. Tab titles don't leave this computer, unless you name groups with an AI service elsewhere.</p>
-        <label for="groupingThreshold">Grouping strictness: <output id="groupingThresholdValue"></output></label>
-        <input id="groupingThreshold" type="range" min="0.15" max="0.4" step="0.01" />
-        <p class="hint">Higher keeps groups tighter and leaves more tabs alone. Lower groups more loosely.</p>
-        <label class="choice"><input type="checkbox" id="renameGrowingGroups" />Rename a group named after one page when a different page joins it</label>
-        <p class="hint">A group of one page is named after it (say, "Gmail"). When a related page joins, Tabcat names the group again from both, unless you've renamed it.</p>
-        <label class="choice"><input type="checkbox" id="nameWithAi" />Name groups with my AI service</label>
-        <p class="hint">Finding related tabs still happens on this computer; only naming the groups uses the service.</p>
-      </fieldset>
-
-      <fieldset id="modelSettings">
-        <legend>Model</legend>
-        <label for="provider">What sorts tabs into categories</label>
-        <select id="provider">
-          <option value="tabcat">Built into Tabcat (on this computer)</option>
-          <option value="firefox">Firefox's built-in AI (on this computer, experimental)</option>
-          <option value="laya">Laya via layad (on this computer)</option>
-          <option value="ai">My AI service</option>
-          <option value="jev" disabled>TypeSafe Jev (not available yet)</option>
+    <div class="scroll"><div class="page">
+    <h1><img src="icons/tabcat-48.png" alt="" />Tabcat settings</h1>
+    <p class="intro">Tabcat groups related tabs and names the groups, on this computer. The first time, it downloads two small models (about 80 MB).</p>
+      <section>
+        <h2>Grouping</h2>
+        <label class="choice"><input type="checkbox" id="keepOrganised" />Group tabs as they load</label>
+        <p class="hint">When this is off, tabs are only grouped when you press Tidy tabs.</p>
+        <label class="choice"><input type="checkbox" id="newGroupForLoneTabs" />Give a tab that fits nowhere a group of its own</label>
+        <p class="hint">When this is off, it waits for a similar tab.</p>
+        <label for="groupingThreshold">How alike tabs must be to share a group</label>
+        <div class="slider"><span>Looser</span><input id="groupingThreshold" type="range" min="0.15" max="0.4" step="0.01" /><span>Stricter</span></div>
+        <p class="hint flush">Stricter makes smaller groups.</p>
+        <label for="tabOrder">Order of tabs in a group</label>
+        <select id="tabOrder">
+          <option value="added">As they were added</option>
+          <option value="title">A–Z by title</option>
+          <option value="site">A–Z by website, then title</option>
         </select>
-        <p id="tabcatHint" class="hint">Uses the model Tabcat already downloads for automatic grouping. Nothing to set up.</p>
-        <div id="firefoxSettings">
-          <p id="firefoxStatus" class="hint"></p>
-          <button type="button" id="allowFirefox" hidden>Allow Firefox's built-in AI</button>
-          <p class="hint">Also turn it on in <code>about:config</code>: set <code>browser.ml.enable</code> and <code>extensions.ml.enabled</code> to <code>true</code>. Firefox downloads the model the first time.</p>
-        </div>
-        <div id="layaSettings">
-          <label for="layaUrl">layad URL</label>
-          <input id="layaUrl" type="url" required />
-          <p class="hint">Where <a href="https://github.com/rcwsr/layad">layad</a> is listening (check with <code>layad status</code>). Only 127.0.0.1 addresses are allowed.</p>
-        </div>
-      </fieldset>
+        <label class="choice"><input type="checkbox" id="renameGrowingGroups" />Rename a group as it grows</label>
+        <p class="hint">Groups you've renamed keep their name.</p>
+      </section>
 
-      <fieldset id="aiSettings">
-        <legend>AI service</legend>
-        <p class="hint">Any service with an OpenAI-compatible API: OpenAI, OpenRouter, or a model on this computer with Ollama or LM Studio. Tabcat sends it the titles, addresses and descriptions of the tabs it's grouping, unless the address is on this computer.</p>
-        <label for="apiUrl">Address</label>
-        <input id="apiUrl" type="url" placeholder="https://api.openai.com/v1" />
-        <p class="hint">Up to and including <code>/v1</code>. For Ollama: <code>http://localhost:11434/v1</code>.</p>
-        <label for="apiKey">API key</label>
-        <input id="apiKey" type="password" autocomplete="off" />
-        <p class="hint">Not needed for Ollama or LM Studio. Kept in this Firefox profile and only sent to the address above.</p>
-        <label for="apiModel">Model</label>
-        <input id="apiModel" type="text" placeholder="gpt-4.1-mini" />
-        <label for="apiPrompt">Instructions (optional)</label>
-        <textarea id="apiPrompt" rows="3" placeholder="Name groups in French. Put anything about football in news."></textarea>
-        <p class="hint">Added to what Tabcat asks the service, both when naming groups and when sorting tabs into categories.</p>
-      </fieldset>
-
-      <fieldset id="categorySettings">
-        <legend>Categories</legend>
-        <label for="minConfidence">Minimum confidence: <output id="minConfidenceValue"></output></label>
-        <input id="minConfidence" type="range" min="0" max="1" step="0.05" />
-        <p class="hint">Tabs the model is less sure about than this are left where they are.</p>
-        <p class="hint">The name becomes the group title. The model reads the description to decide what belongs, so describe the contents rather than just naming them.</p>
+      <section>
+        <h2>Your categories <span class="optional">(optional)</span></h2>
+        <p class="hint flush">Groups you always want, like Work or Shopping. Say what belongs in each.</p>
         <div id="categories"></div>
-        <button type="button" id="addCategory">Add category</button>
-      </fieldset>
+        <div class="row">
+          <button type="button" id="addCategory">Add a category</button>
+          <button type="button" id="addExamples">Add examples</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Finding moved tabs</h2>
+        <label class="choice"><input type="checkbox" id="showToast" />Show a message when Tabcat moves the tab you're on</label>
+        <p class="hint">Show finds the tab in the tab bar. Undo puts it back.</p>
+        <p id="toastStatus" class="hint warning" hidden>Tabcat can't show messages while its access to websites is off (about:addons → Tabcat → Permissions).</p>
+        <label class="choice"><input type="checkbox" id="markGroups" />Mark the group with ● until you've been to it</label>
+        <p class="hint flush" id="shortcut" hidden>Press <kbd id="shortcutKey"></kbd> to show the last tab Tabcat moved. <a href="#" id="changeShortcut">Change shortcut</a></p>
+      </section>
+
+      <section>
+        <h2>AI service <span class="optional">(optional)</span></h2>
+        <label class="choice"><input type="checkbox" id="useAi" />Use an AI service for better names and categories</label>
+        <p class="hint">Tabcat only asks it about tabs it isn't sure of, many at a time.</p>
+        <div id="aiSettings">
+          <p class="hint flush">Any OpenAI-compatible service: OpenAI, OpenRouter, or Ollama or LM Studio on this computer. It's sent tab titles and website names, and sometimes a page's description.</p>
+          <label for="apiUrl">Address</label>
+          <input id="apiUrl" type="url" placeholder="https://api.openai.com/v1" />
+          <p class="hint flush">Ollama: <code>http://localhost:11434/v1</code>. LM Studio: <code>http://localhost:1234/v1</code>.</p>
+          <label for="apiKey">API key</label>
+          <input id="apiKey" type="password" autocomplete="off" />
+          <p class="hint flush">Not needed for Ollama or LM Studio.</p>
+          <label for="modelList">Model</label>
+          <input id="modelSearch" type="search" placeholder="Search models" aria-label="Search models" hidden />
+          <select id="modelList" hidden></select>
+          <input id="apiModel" type="text" placeholder="gpt-4.1-mini" aria-label="Model" />
+          <p id="modelProblem" class="hint flush warning" hidden></p>
+          <label for="apiPrompt">Your instructions (optional)</label>
+          <textarea id="apiPrompt" rows="2" placeholder="Name groups in French. Put anything about football in News."></textarea>
+          <div class="row">
+            <button type="button" id="testAi" title="Sends two made-up tabs, not yours">Test</button>
+            <span id="testResult"></span>
+          </div>
+          <p class="hint flush"><span id="usage"></span> <a href="#" id="resetUsage" hidden>Reset</a></p>
+          <p id="aiWarning" class="hint flush warning" hidden></p>
+        </div>
+      </section>
 
       </div></div>
 
@@ -152,8 +137,8 @@
 
     <template id="categoryRow">
       <div class="category">
-        <input type="text" class="key" placeholder="Name" required />
-        <textarea class="criteria" rows="1" placeholder="What belongs in this group" required></textarea>
+        <input type="text" class="key" placeholder="Name" />
+        <textarea class="criteria" rows="1" placeholder="What belongs in it"></textarea>
         <button type="button" class="remove" title="Remove">✕</button>
       </div>
     </template>
