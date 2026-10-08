@@ -100,10 +100,9 @@ See the [privacy policy](PRIVACY.md).
 
 ## Installing
 
-Firefox 142 or later. Download **[tabcat.xpi](https://github.com/rcwsr/tabcat/releases/latest/download/tabcat.xpi)**
-from the latest release (signed by Mozilla), then drag it onto a Firefox window, or open
-`about:addons` → ⚙ → Install Add-on From File. It doesn't update itself: download it again
-for a newer version. Or load it yourself as below.
+Firefox 142 or later. Install it from
+**[addons.mozilla.org](https://addons.mozilla.org/en-GB/firefox/addon/tabcat/)**; Firefox
+then keeps it up to date. Or load it yourself as below.
 
 ## Development
 
@@ -116,16 +115,13 @@ npm run build    # packages the extension into web-ext-artifacts/
 
 To release: raise `version` in `extension/manifest.json`, then push a tag to match
 (`git tag v0.2.0 && git push origin v0.2.0`). GitHub builds the add-on zip and a source zip,
-Mozilla signs the version without listing it (no store review), and a GitHub release gets
-the signed `tabcat.xpi` to install, along with both zips. This needs the repo secrets
-`AMO_API_KEY` and `AMO_API_SECRET`. You can do the same without pushing a tag: Actions →
-Release → Run workflow → "self-distributed". To build without a release: Run workflow →
-"build only".
+submits the version to addons.mozilla.org (Mozilla reviews and signs it), and makes a GitHub
+release with both zips. This needs the repo secrets `AMO_API_KEY` and `AMO_API_SECRET`. To
+build without a release: Actions → Release → Run workflow → "build only".
 
-To send tagged versions to the store instead, set the repo variable `AMO_CHANNEL` to
-`listed` (`gh variable set AMO_CHANNEL --body listed`). A tag then attaches both zips to a
-release and submits the new version to addons.mozilla.org. The store only takes versions
-higher than any used before, so a self-distributed version number can't go to the store too.
+Version numbers are shared across Mozilla's channels, so a version can't be both listed and
+self-distributed. "self-distributed" in the same menu has Mozilla sign a version without
+listing it, and attaches the signed `tabcat.xpi` to the release.
 
 To load it by hand: `about:debugging` → This Firefox → Load Temporary Add-on →
 `extension/manifest.json` (after `npm install`).

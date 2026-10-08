@@ -1,16 +1,14 @@
 name: Release
 
 # Builds the add-on package for addons.mozilla.org, and a copy of the source for its reviewers.
-# - Push a tag like v0.1.0 (matching the version in extension/manifest.json) to release it
-#   self-distributed: Mozilla signs the version without listing it (no review queue), and a
-#   GitHub release gets the signed tabcat.xpi to install, along with both files.
-#   With the repo variable AMO_CHANNEL set to "listed", a tag goes to the store instead: a
-#   GitHub release gets both files, and the version is submitted to the store listing
-#   (with the repo secrets AMO_API_KEY and AMO_API_SECRET set; skipped without them).
+# - Push a tag like v0.1.0 (matching the version in extension/manifest.json) to release it:
+#   the version is submitted to the addons.mozilla.org listing (needs the repo secrets
+#   AMO_API_KEY and AMO_API_SECRET), and a GitHub release gets both files.
 # - Or run it by hand (Actions → Release → Run workflow) and choose:
 #   - "build only": the files as a download from the run.
-#   - "self-distributed": as a tag does by default, and makes the tag vX.Y.Z. Version
-#     numbers are shared with the store, so raise the version first.
+#   - "self-distributed": Mozilla signs the version without listing it, and a GitHub release
+#     gets the signed tabcat.xpi, with the tag vX.Y.Z. Version numbers are shared with the
+#     store, so a version released this way can't also be submitted to the listing.
 on:
   push:
     tags: ["v*"]
@@ -26,8 +24,8 @@ permissions:
   contents: write
 
 env:
-  # By hand when chosen, and for a tag unless AMO_CHANNEL is "listed".
-  SELF_DISTRIBUTED: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish == 'self-distributed') || (github.event_name == 'push' && vars.AMO_CHANNEL != 'listed') }}
+  # Only when chosen by hand. A tag goes to the store.
+  SELF_DISTRIBUTED: ${{ github.event_name == 'workflow_dispatch' && inputs.publish == 'self-distributed' }}
 
 jobs:
   release:
@@ -71,11 +69,6 @@ jobs:
           name: tabcat
           path: web-ext-artifacts/*.zip
 
-      - name: Make the release
-        if: github.ref_type == 'tag' && env.SELF_DISTRIBUTED != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" web-ext-artifacts/*.zip --title "Tabcat $GITHUB_REF_NAME" --generate-notes
       # Uploads the version to the store listing, with the source for its reviewers. Mozilla
       # then checks and signs it as usual; this doesn't wait for that.
       - name: Submit to addons.mozilla.org
@@ -84,15 +77,17 @@ jobs:
           WEB_EXT_API_KEY: ${{ secrets.AMO_API_KEY }}
           WEB_EXT_API_SECRET: ${{ secrets.AMO_API_SECRET }}
         run: |
-          if [ -z "$WEB_EXT_API_KEY" ]; then
-            echo "::notice::No AMO_API_KEY secret, so not submitted to addons.mozilla.org"
-            exit 0
-          fi
           npx web-ext sign -s extension --channel=listed --approval-timeout=0 \
             --upload-source-code "web-ext-artifacts/tabcat-$VERSION-source.zip"
 
+      - name: Make the release
+        if: github.ref_type == 'tag' && env.SELF_DISTRIBUTED != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" web-ext-artifacts/*.zip --title "Tabcat $GITHUB_REF_NAME" --generate-notes
+
       # Self-distributed: signed straight away, and the .xpi downloaded into web-ext-artifacts/.
-      # It's renamed tabcat.xpi so the README can link to the latest release's copy.
+      # It's renamed tabcat.xpi.
       - name: Sign for self-distribution
         if: env.SELF_DISTRIBUTED == 'true'
         env:
