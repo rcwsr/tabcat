@@ -2,32 +2,49 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <link rel="stylesheet" href="theme.css" />
     <style>
-      body { font: 13px system-ui, sans-serif; width: 240px; margin: 12px; }
-      button { width: 100%; padding: 8px; font: inherit; cursor: pointer; }
+      body { font-size: 13px; width: 260px; }
+      header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+      header img { width: 20px; height: 20px; }
+      header h1 { flex: 1; font-size: 14px; margin: 0; }
+      #settings { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+      #settings:hover { background: var(--border); color: var(--text); }
+      #settings svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+      main { padding: 12px; }
+      #organise { width: 100%; padding: 10px; }
       .secondary { display: flex; gap: 6px; margin-top: 6px; }
-      .secondary button { padding: 4px 8px; }
-      #status { margin-top: 10px; white-space: pre-wrap; color: #555; }
-      #status.error { color: #c00; }
-      #moves { margin-top: 12px; }
-      #moves h2 { font-size: 12px; font-weight: 600; color: #555; margin: 0 0 4px; }
-      .move { display: flex; gap: 6px; align-items: baseline; margin: 4px 0; }
+      .secondary button { flex: 1; padding: 5px 8px; font-size: 12px; }
+      #status { margin-top: 10px; white-space: pre-wrap; }
+      #status:empty { display: none; }
+      #moves { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+      #moves h2 { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 4px; }
+      .move { display: flex; gap: 8px; align-items: center; padding: 4px 6px; margin: 0 -6px; border-radius: 6px; }
+      .move:hover { background: var(--border); }
       .move span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .move button { width: auto; padding: 2px 8px; }
-      #settings { display: block; margin-top: 10px; text-align: right; color: #555; }
+      .move button { padding: 1px 8px; font-size: 12px; background: none; border-color: transparent; color: var(--accent); }
+      .move button:hover:not(:disabled) { border-color: var(--accent); }
     </style>
   </head>
   <body>
-    <button id="organise">Tidy tabs</button>
-    <div class="secondary">
-      <button id="reorganise" title="Break up all groups in this window and sort every tab again">Reorganise</button>
-      <button id="undoReorganise" title="Put the groups back as they were before Reorganise" hidden>Undo reorganise</button>
-    </div>
-    <div id="status"></div>
-    <div id="moves" hidden>
-      <h2>Recently moved</h2>
-    </div>
-    <a href="#" id="settings">Settings</a>
+    <header>
+      <img src="icons/tabcat.svg" alt="" />
+      <h1>Tabcat</h1>
+      <a href="#" id="settings" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
+      </a>
+    </header>
+    <main>
+      <button id="organise" class="primary">Tidy tabs</button>
+      <div class="secondary">
+        <button id="reorganise" title="Break up all groups in this window and sort every tab again">Reorganise</button>
+        <button id="undoReorganise" title="Put the groups back as they were before Reorganise" hidden>Undo reorganise</button>
+      </div>
+      <div id="status"></div>
+      <div id="moves" hidden>
+        <h2>Recently moved</h2>
+      </div>
+    </main>
     <script src="popup.js" type="module"></script>
   </body>
 </html>
